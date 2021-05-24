@@ -8,6 +8,8 @@
 #include "afxdialogex.h"
 #include "AGEventDef.h"
 
+#include "AgoraBase.h"
+
 #include <string>
 
 #ifdef _DEBUG
@@ -288,18 +290,25 @@ void CSDKdemoDlg::joinChannel()
 	{
 		VideoCanvas vc;
 		vc.view = m_localView.GetSafeHwnd();
-		vc.renderMode = RENDER_MODE_TYPE::RENDER_MODE_FIT;
+		vc.renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT;
 		m_lpRtcEngine->setupLocalVideo(vc);
-		m_lpRtcEngine->enableVideo();
-		m_lpRtcEngine->startPreview();
+		// m_lpRtcEngine->startPreview();
 
 		adjustVideoViews(true, false);
 
-		LPCSTR lpStreamInfo = "{\"owner\":true,\"width\":640,\"height\":480,\"bitrate\":500}";
-
 		CString channelName;
 		m_edtChannelName.GetWindowText(channelName);
-		m_lpRtcEngine->joinChannel(nullptr, (const char*)CStringA(channelName), lpStreamInfo, 0);
+
+		ChannelMediaOptions op;
+		op.publishAudioTrack = true;
+		op.publishCameraTrack = true;
+		op.publishCustomVideoTrack = false;
+		op.publishScreenTrack = false;
+		op.autoSubscribeAudio = true;
+		op.autoSubscribeVideo = true;
+		//op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
+		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+		m_lpRtcEngine->joinChannel(nullptr, (const char*)CStringA(channelName), 0, op);
 	}
 
 }
@@ -332,6 +341,8 @@ LRESULT CSDKdemoDlg::OnJoinChannelSuccess(WPARAM wParam, LPARAM lParam)
 	unsigned int uid = lpData->uid;
 	int elapsed = lpData->elapsed;
 
+	m_lpRtcEngine->startPreview();
+
 	return 0;
 }
 
@@ -359,7 +370,7 @@ LRESULT CSDKdemoDlg::onUserJoined(WPARAM wParam, LPARAM lParam)
 		VideoCanvas	vc;
 
 		vc.uid = uid;
-		vc.renderMode = RENDER_MODE_TYPE::RENDER_MODE_FIT;
+		vc.renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT;
 		vc.view = m_remoteView.GetSafeHwnd();
 		vc.priv = NULL;
 		m_lpRtcEngine->setupRemoteVideo(vc);
