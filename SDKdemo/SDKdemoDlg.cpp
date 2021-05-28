@@ -10,11 +10,39 @@
 
 #include "AgoraBase.h"
 
+#include "CAgoraManager.h"
+#include "SimpleWindow.h"
+
+#include <time.h>
 #include <string>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+std::wstring utf82wide(const std::string& utf8) {
+  if (utf8.empty()) return std::wstring();
+  int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), utf8.size(), nullptr, 0);
+  wchar_t* buf = new wchar_t[len + 1];
+  if (!buf) return std::wstring();
+  ZeroMemory(buf, sizeof(wchar_t) * (len + 1));
+  MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), utf8.size(), buf, sizeof(wchar_t) * (len + 1));
+  std::wstring result(buf);
+  delete[] buf;
+  return result;
+}
+
+std::string wide2ansi(const std::wstring& wide) {
+  if (wide.empty()) return std::string();
+  int len = WideCharToMultiByte(CP_ACP, 0, wide.c_str(), wide.size(), nullptr, 0, nullptr, nullptr);
+  char* buf = new char[len + 1];
+  if (!buf) return std::string();
+  ZeroMemory(buf, len + 1);
+  WideCharToMultiByte(CP_ACP, 0, wide.c_str(), wide.size(), buf, len + 1, nullptr, nullptr);
+  std::string result(buf);
+  delete[] buf;
+  return result;
+}
 
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
@@ -57,6 +85,8 @@ END_MESSAGE_MAP()
 CSDKdemoDlg::CSDKdemoDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_SDKDEMO_DIALOG, pParent)
 {
+	srand((unsigned)time(NULL));
+
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -65,7 +95,20 @@ void CSDKdemoDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_BUTTON_CONFIRM, m_btnConfirm);
 	DDX_Control(pDX, IDC_BUTTON_QUIT, m_btnQuit);
+	DDX_Control(pDX, IDC_BUTTON_PUBLISH_CAMERA, m_btnPublishCamera);
+	DDX_Control(pDX, IDC_BUTTON_PUBLISH_SCREEN, m_btnPublishScreen);
+	DDX_Control(pDX, IDC_BUTTON_PREVIEW_CAMERA, m_btnPreviewCamera);
+	DDX_Control(pDX, IDC_BUTTON_PREVIEW_SCREEN, m_btnPreviewScreen);
+	DDX_Control(pDX, IDC_BUTTON_MUTE_CAMERA, m_btnMuteCamera);
+	DDX_Control(pDX, IDC_BUTTON_MUTE_SCREEN, m_btnMuteScreen);
+	DDX_Control(pDX, IDC_BUTTON_UPDATE_USERS, m_btnUpdateUsers);
 	DDX_Control(pDX, IDC_EDIT_CHANNEL_NAME, m_edtChannelName);
+	DDX_Control(pDX, IDC_COMBO_USERS, m_cmbUsers);
+	DDX_Control(pDX, IDC_COMBO_CAMERA_LIST, m_cmbCameraList);
+	DDX_Control(pDX, IDC_COMBO_MIC_LIST, m_cmbMicList);
+	DDX_Control(pDX, IDC_STATIC_AUDIO_DEVICE, m_textAudioDeviceList);
+	DDX_Control(pDX, IDC_STATIC_VIDEO_DEVICE, m_textVideoDeviceList);
+	DDX_Control(pDX, IDC_CHECK_VIDEO_OBSERVER, m_btnEnableVideoObserver);
 }
 
 BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
@@ -75,11 +118,19 @@ BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_CONFIRM, &CSDKdemoDlg::OnBnClickedConfirm)
 	ON_BN_CLICKED(IDC_BUTTON_QUIT, &CSDKdemoDlg::OnBnClickedButtonQuit)
 	ON_EN_CHANGE(IDC_EDIT_CHANNEL_NAME, &CSDKdemoDlg::OnEnChangeEditChannelName)
-
-	ON_MESSAGE(MSGID_JOIN_CHANNEL_SUCCESS, &CSDKdemoDlg::OnJoinChannelSuccess)
-	ON_MESSAGE(MSGID_LEAVE_CHANNEL, &CSDKdemoDlg::OnLeaveChannel)
-	ON_MESSAGE(MSGID_USER_JOINED, &CSDKdemoDlg::onUserJoined)
-	ON_MESSAGE(MSGID_USER_OFFLINE, &CSDKdemoDlg::onUserOffline)
+	ON_BN_CLICKED(IDC_BUTTON_PUBLISH_CAMERA, &CSDKdemoDlg::OnBnClickedButtonPublishCamera)
+	ON_BN_CLICKED(IDC_BUTTON_PREVIEW_CAMERA, &CSDKdemoDlg::OnBnClickedButtonPreviewCamera)
+	ON_CBN_SELCHANGE(IDC_COMBO_USERS, &CSDKdemoDlg::OnCbnSelchangeComboUsers)
+	ON_BN_CLICKED(IDC_BUTTON_UPDATE_USERS, &CSDKdemoDlg::OnBnClickedButtonUpdateUsers)
+	ON_BN_CLICKED(IDC_BUTTON_PUBLISH_SCREEN, &CSDKdemoDlg::OnBnClickedButtonPublishScreen)
+	ON_BN_CLICKED(IDC_BUTTON_PREVIEW_SCREEN, &CSDKdemoDlg::OnBnClickedButtonPreviewScreen)
+	ON_BN_CLICKED(IDC_BUTTON_MUTE_CAMERA, &CSDKdemoDlg::OnBnClickedButtonMuteCamera)
+	ON_BN_CLICKED(IDC_BUTTON_MUTE_SCREEN, &CSDKdemoDlg::OnBnClickedButtonMuteScreen)
+	ON_CBN_SELCHANGE(IDC_COMBO_CAMERA_LIST, &CSDKdemoDlg::OnCbnSelchangeComboCameraList)
+	ON_CBN_SELCHANGE(IDC_COMBO_MIC_LIST, &CSDKdemoDlg::OnCbnSelchangeComboMicList)
+	ON_STN_CLICKED(IDC_STATIC_AUDIO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticAudioDevice)
+	ON_STN_CLICKED(IDC_STATIC_VIDEO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticVideoDevice)
+	ON_BN_CLICKED(IDC_CHECK_VIDEO_OBSERVER, &CSDKdemoDlg::OnBnClickedCheckVideoObserver)
 END_MESSAGE_MAP()
 
 
@@ -94,6 +145,10 @@ BOOL CSDKdemoDlg::OnInitDialog()
 	// IDM_ABOUTBOX 必须在系统命令范围内。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
+
+	//ModifyStyle(0, WS_SYSMENU | WS_MINIMIZEBOX);
+	ModifyStyle(0, WS_SYSMENU);
+	ModifyStyle(0, WS_CAPTION);
 
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != nullptr)
@@ -130,26 +185,66 @@ void CSDKdemoDlg::initCtrls()
 	CWnd	*lpWndDesktop = GetDesktopWindow();
 	lpWndDesktop->GetWindowRect(&rcDesktop);
 
-	m_width = rcDesktop.Width() / 4;
-	m_height = m_width * 1.2;
+	m_width = rcDesktop.Width() * 0.3;
+	m_height = m_width * 1.7;
 
 	MoveWindow(0, 0, m_width, m_height, TRUE);
 	CenterWindow();
 	GetWindowRect(rc);
 
-	m_btnConfirm.SetWindowText(_T("Join"));
-	m_btnConfirm.MoveWindow(rc.Width() / 2 - 60, rc.Height() - 150, 120, 40, TRUE);
-
-	m_btnQuit.SetWindowText(_T("Quit"));
-	m_btnQuit.MoveWindow(rc.Width() / 2 - 60, rc.Height() - 100, 120, 40, TRUE);
+	int row_space = 50;
+	int col_space = 200;
+	int base_left = 30;
+	int base_top = 30;
+	int base_width = 150;
+	int base_height = 40;
 
 	m_edtChannelName.SetWindowText(_T("ChannelName"));
-	m_edtChannelName.MoveWindow(rc.Width() / 2 - 90, rc.Height() / 2.5, 180, 45, TRUE);
+	m_edtChannelName.MoveWindow(base_left, base_top, base_width, base_height, TRUE);
+
+	m_btnConfirm.SetWindowText(_T("Join"));
+	m_btnConfirm.MoveWindow(base_left, base_top + row_space, base_width, base_height, TRUE);
+
+	m_btnPublishCamera.SetWindowText(_T("Publish Camera"));
+	m_btnPublishCamera.MoveWindow(base_left, base_top + row_space * 2, base_width, base_height, TRUE);
+
+	m_btnPublishScreen.SetWindowText(_T("Publish Screen"));
+	m_btnPublishScreen.MoveWindow(base_left, base_top + row_space * 3, base_width, base_height, TRUE);
+
+	m_btnPreviewScreen.SetWindowText(_T("Allocate View"));
+	m_btnPreviewScreen.MoveWindow(base_left, base_top + row_space * 4, base_width, base_height, TRUE);
+
+	m_btnMuteCamera.SetWindowText(_T("Pause Camera"));
+	m_btnMuteCamera.MoveWindow(base_left, base_top + row_space * 5, base_width, base_height, TRUE);
+
+	m_btnMuteScreen.SetWindowText(_T("Pause Screen"));
+	m_btnMuteScreen.MoveWindow(base_left, base_top + row_space * 6, base_width, base_height, TRUE);
+
+	m_btnQuit.SetWindowText(_T("Quit"));
+	m_btnQuit.MoveWindow(base_left, base_top + row_space * 7, base_width, base_height, TRUE);
+
+	m_btnEnableVideoObserver.SetWindowText(_T("Enable Video Observer"));
+	m_btnEnableVideoObserver.MoveWindow(base_left, base_top + row_space * 8, base_width + 100, base_height, TRUE);
+
+	m_btnUpdateUsers.SetWindowText(_T("Update Users"));
+	m_btnUpdateUsers.MoveWindow(base_left + col_space, base_top, base_width, base_height, TRUE);
+
+	m_cmbUsers.MoveWindow(base_left + col_space, base_top + row_space, base_width, base_height, TRUE);
+
+	m_textVideoDeviceList.SetWindowText(_T("Video Device:"));
+	m_textVideoDeviceList.MoveWindow(base_left, base_top + row_space * 13, 120, base_height, TRUE);
+	m_cmbCameraList.MoveWindow(base_left + 120, base_top + row_space * 13, base_width * 2, base_height, TRUE);
+
+	m_textAudioDeviceList.SetWindowText(_T("Audio Device:"));
+	m_textAudioDeviceList.MoveWindow(base_left, base_top + row_space * 14, 120, base_height, TRUE);
+	m_cmbMicList.MoveWindow(base_left + 120, base_top + row_space * 14, base_width * 2, base_height, TRUE);
+
+	//m_btnPreviewCamera.SetWindowText(_T("Preview Camera"));
+	//m_btnPreviewCamera.MoveWindow(rc.Width() / 2 + 80, rc.Height() - 200, 120, 40, TRUE);
+	m_btnPreviewCamera.ShowWindow(SW_HIDE);
 
 	m_localView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_CLIPCHILDREN, CRect(0, 0, 1, 1), this, 1234);
 	m_remoteView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_CLIPCHILDREN, CRect(0, 0, 1, 1), this, 1235);
-
-	m_engineEventHandler.setMainWnd(GetSafeHwnd());
 }
 
 void CSDKdemoDlg::initData()
@@ -157,15 +252,23 @@ void CSDKdemoDlg::initData()
 	static bool done = false;
 	if(!done)
 	{
-		m_inChannel = false;
-		m_lpRtcEngine = createAgoraRtcEngine();
+		m_agoraManager = CAgoraManager::Inst();
+		m_agoraManager->Init("aab8b8f5a8cd4469a63042fcfafe7063");
 
-		RtcEngineContext ctx;
+		std::vector<CAgoraManager::CameraProg> camera_list;
+		m_agoraManager->GetCameraList(camera_list);
+		for (int i = 0; i < camera_list.size(); i++) {
+			CString device_name_ansi(wide2ansi(utf82wide(camera_list[i].device_name_utf8)).c_str());
+			m_cmbCameraList.InsertString(i, (LPCTSTR)(device_name_ansi));
+		}
 
-		ctx.eventHandler = &m_engineEventHandler;
-		ctx.appId = "aab8b8f5a8cd4469a63042fcfafe7063";
-
-		m_lpRtcEngine->initialize(ctx);
+		std::vector<CAgoraManager::MicProg> mic_list;
+		m_agoraManager->GetMicList(mic_list);
+		for (int i = 0; i < mic_list.size(); i++) {
+			//CString device_name(mic_list[i].device_name.c_str());
+			CString device_name_ansi(wide2ansi(utf82wide(mic_list[i].device_name_utf8)).c_str());
+			m_cmbMicList.InsertString(i, (LPCTSTR)(device_name_ansi));
+		}
 
 		done = true;
 	}
@@ -271,142 +374,51 @@ void CSDKdemoDlg::adjustVideoViews(bool local, bool remote)
 
 void CSDKdemoDlg::joinChannel()
 {
-	CRect rcDesktop;
-	CRect rc;
-	CWnd *lpWndDesktop = GetDesktopWindow();
-	lpWndDesktop->GetWindowRect(&rcDesktop);
+	CString channelName;
+	m_edtChannelName.GetWindowText(channelName);
 
-	int width = rcDesktop.Width() / 3;
-	int height = width;
+	uid_t screen_uid = rand() % 99999 + 1;
 
-	MoveWindow(0, 0, width, height, TRUE);
-	CenterWindow();
-	GetWindowRect(rc);
-	m_btnConfirm.MoveWindow(rc.Width() / 2 - 60, rc.Height() - 100, 120, 40, TRUE);
-	m_btnQuit.ShowWindow(SW_HIDE);
-	m_edtChannelName.ShowWindow(SW_HIDE);
-
-	if(m_lpRtcEngine)
-	{
-		VideoCanvas vc;
-		vc.view = m_localView.GetSafeHwnd();
-		vc.renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT;
-		m_lpRtcEngine->setupLocalVideo(vc);
-		// m_lpRtcEngine->startPreview();
-
-		adjustVideoViews(true, false);
-
-		CString channelName;
-		m_edtChannelName.GetWindowText(channelName);
-
-		ChannelMediaOptions op;
-		op.publishAudioTrack = true;
-		op.publishCameraTrack = true;
-		op.publishCustomVideoTrack = false;
-		op.publishScreenTrack = false;
-		op.autoSubscribeAudio = true;
-		op.autoSubscribeVideo = true;
-		//op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
-		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-		m_lpRtcEngine->joinChannel(nullptr, (const char*)CStringA(channelName), 0, op);
-	}
-
+	m_agoraManager->JoinChannel((const char*)CStringA(channelName), nullptr, 0, nullptr, screen_uid);
 }
 
 void CSDKdemoDlg::leaveChannel()
 {
-	CRect rc;
-	MoveWindow(0, 0, m_width, m_height, TRUE);
-	CenterWindow();
-	GetWindowRect(rc);
-	m_btnConfirm.MoveWindow(rc.Width() / 2 - 60, rc.Height() - 150, 120, 40, TRUE);
-	m_btnQuit.MoveWindow(rc.Width() / 2 - 60, rc.Height() - 100, 120, 40, TRUE);
-	m_edtChannelName.MoveWindow(rc.Width() / 2 - 90, rc.Height() / 2.5, 180, 45, TRUE);
-	m_btnQuit.ShowWindow(SW_SHOW);
-	m_edtChannelName.ShowWindow(SW_SHOW);
-	m_localView.ShowWindow(SW_HIDE);
-	m_remoteView.ShowWindow(SW_HIDE);
-
-	if(m_lpRtcEngine)
-	{
-		m_lpRtcEngine->leaveChannel();
-	}
-}
-
-LRESULT CSDKdemoDlg::OnJoinChannelSuccess(WPARAM wParam, LPARAM lParam)
-{
-	JoinChannelSuccessData *lpData = reinterpret_cast<JoinChannelSuccessData *>(wParam);
-
-	std::string channelName = lpData->channelName;
-	unsigned int uid = lpData->uid;
-	int elapsed = lpData->elapsed;
-
-	m_lpRtcEngine->startPreview();
-
-	return 0;
-}
-
-LRESULT CSDKdemoDlg::OnLeaveChannel(WPARAM wParam, LPARAM lParam)
-{
-	LeaveChannelData *lpData = reinterpret_cast<LeaveChannelData *>(wParam);
-
-	unsigned int txBytes = lpData->txBytes;
-	unsigned int rxBytes = lpData->rxBytes;
-	unsigned short txKBitRate = lpData->txKBitRate;
-	unsigned short rxKBitRate = lpData->rxKBitRate;
-
-	return 0;
-}
-
-LRESULT CSDKdemoDlg::onUserJoined(WPARAM wParam, LPARAM lParam)
-{
-	UserJoinedData *lpData = reinterpret_cast<UserJoinedData *>(wParam);
-
-	unsigned int uid = lpData->uid;
-	int elapsed = lpData->elapsed;
-
-	if(m_lpRtcEngine)
-	{
-		VideoCanvas	vc;
-
-		vc.uid = uid;
-		vc.renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT;
-		vc.view = m_remoteView.GetSafeHwnd();
-		vc.priv = NULL;
-		m_lpRtcEngine->setupRemoteVideo(vc);
+	if (m_set_view) {
+		if (m_camera_win) {
+			delete m_camera_win;
+			m_camera_win = nullptr;
+		}
+		if (m_screen_win) {
+			delete m_screen_win;
+			m_screen_win = nullptr;
+		}
+		m_set_view = false;
 	}
 
-	adjustVideoViews(true, true);
+	m_agoraManager->LeaveChannel();
 
-	return 0;
-}
-
-LRESULT CSDKdemoDlg::onUserOffline(WPARAM wParam, LPARAM lParam)
-{
-	UserOfflineData *lpData = reinterpret_cast<UserOfflineData *>(wParam);
-
-	unsigned int uid = lpData->uid;
-	int reason = lpData->reason;
-
-	adjustVideoViews(true, false);
-
-	return 0;
+	for (auto it = m_users_win.begin(); it != m_users_win.end(); it++) {
+		if (it->second) {
+			delete it->second;
+		}
+	}
+	m_users_win.clear();
+	m_cmbUsers.ResetContent();
 }
 
 void CSDKdemoDlg::OnBnClickedConfirm()
 {
 	// TODO: 在此添加控件通知处理程序代码
-	if(m_inChannel)
+	if(m_agoraManager->IsJoinChannel())
 	{
 		leaveChannel();
 		m_btnConfirm.SetWindowText(_T("Join"));
-		m_inChannel = false;
 	}
 	else
 	{
 		joinChannel();
 		m_btnConfirm.SetWindowText(_T("Leave"));
-		m_inChannel = true;
 	}
 }
 
@@ -417,7 +429,7 @@ void CSDKdemoDlg::OnBnClickedButtonQuit()
 	m_localView.DestroyWindow();
 	m_remoteView.DestroyWindow();
 
-	m_lpRtcEngine->release(true);
+	CAgoraManager::Destroy();
 	CDialogEx::OnCancel();
 }
 
@@ -430,4 +442,197 @@ void CSDKdemoDlg::OnEnChangeEditChannelName()
 	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
 
 	// TODO:  在此添加控件通知处理程序代码
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonPublishCamera()
+{
+	if(m_agoraManager->IsPushCamera())
+	{
+		m_agoraManager->StopPushCamera();
+		m_btnPublishCamera.SetWindowText(_T("Publish Camera"));
+	}
+	else
+	{
+		m_agoraManager->StartPushCamera(true, 1280, 720);
+		m_btnPublishCamera.SetWindowText(_T("Unpublish Camera"));
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonPreviewCamera()
+{
+	//if (m_agoraManager->IsPreview()) {
+	//	m_agoraManager->StopPreview();
+	//	if (m_camera_win) {
+	//		delete m_camera_win;
+	//		m_camera_win = nullptr;
+	//	}
+	//	m_btnPreviewCamera.SetWindowText(_T("Preview Camera"));
+	//} else {
+	//	if (m_camera_win) {
+	//		delete m_camera_win;
+	//		m_camera_win = nullptr;
+	//	}
+	//	m_camera_win = new SimpleWindow("Camera");
+	//	m_agoraManager->SetCameraShowHwnd(m_camera_win->GetView());
+	//	m_agoraManager->StartPreview();
+	//	m_btnPreviewCamera.SetWindowText(_T("Hide Preview"));
+	//}
+}
+
+
+void CSDKdemoDlg::OnCbnSelchangeComboUsers()
+{
+	int pos = m_cmbUsers.GetCurSel();
+	CString str_uid;
+	m_cmbUsers.GetLBText(pos, str_uid);
+	agora::rtc::uid_t uid = std::stoul((const char *)CStringA(str_uid), nullptr, 0);
+	if (m_users_win.find(uid) == m_users_win.end()) {
+		SimpleWindow* win = new SimpleWindow((const char *)CStringA(str_uid));
+		m_agoraManager->SetPlayerShowHwnd(uid, win->GetView());
+		m_users_win[uid] = win;
+		m_agoraManager->PlayVideo(uid);
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonUpdateUsers()
+{
+	std::vector<agora::rtc::uid_t> user_list;
+	m_agoraManager->GetPlayerUID(user_list);
+
+	m_cmbUsers.ResetContent();
+
+	for (auto user : user_list) {
+		std::string uid = std::to_string(user);
+		CString str_uid(uid.c_str());
+		m_cmbUsers.AddString((LPCTSTR)(str_uid));
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonPublishScreen()
+{
+	if(m_agoraManager->IsPushScreen())
+	{
+		m_agoraManager->StopPushScreen();
+		m_btnPublishScreen.SetWindowText(_T("Publish Screen"));
+	}
+	else
+	{
+		m_agoraManager->StartPushScreen(true, 1280, 720);
+		m_btnPublishScreen.SetWindowText(_T("Unpublish Screen"));
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonPreviewScreen()
+{
+	if (m_set_view) {
+		m_agoraManager->SetCameraShowHwnd(0);
+		m_agoraManager->SetWindowDesktopShowHwnd(0);
+
+		if (m_camera_win) {
+			delete m_camera_win;
+			m_camera_win = nullptr;
+		}
+		if (m_screen_win) {
+			delete m_screen_win;
+			m_screen_win = nullptr;
+		}
+		m_btnPreviewScreen.SetWindowText(_T("Allocate Local View"));
+		m_set_view = false;
+	} else {
+		if (m_camera_win) {
+			delete m_camera_win;
+			m_camera_win = nullptr;
+		}
+		if (m_screen_win) {
+			delete m_screen_win;
+			m_screen_win = nullptr;
+		}
+
+		m_camera_win = new SimpleWindow("Camera");
+		m_agoraManager->SetCameraShowHwnd(m_camera_win->GetView());
+
+		m_screen_win = new SimpleWindow("Screen");
+		m_agoraManager->SetWindowDesktopShowHwnd(m_screen_win->GetView());
+
+		m_btnPreviewScreen.SetWindowText(_T("Clear Local View"));
+		m_set_view = true;
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonMuteCamera()
+{
+	if(m_agoraManager->IsPushCameraPause())
+	{
+		m_agoraManager->SetPushCameraPause(false);
+		m_btnMuteCamera.SetWindowText(_T("Pause Camera"));
+	}
+	else
+	{
+		m_agoraManager->SetPushCameraPause(true);
+		m_btnMuteCamera.SetWindowText(_T("Resume Camera"));
+	}
+}
+
+
+void CSDKdemoDlg::OnBnClickedButtonMuteScreen()
+{
+	if(m_agoraManager->IsScreenPushPause())
+	{
+		m_agoraManager->SetScreenPushPause(false);
+		m_btnMuteScreen.SetWindowText(_T("Pause Screen"));
+	}
+	else
+	{
+		m_agoraManager->SetScreenPushPause(true);
+		m_btnMuteScreen.SetWindowText(_T("Resume Screen"));
+	}
+}
+
+
+void CSDKdemoDlg::OnCbnSelchangeComboCameraList()
+{
+	int id = m_cmbCameraList.GetCurSel();
+	std::vector<CAgoraManager::CameraProg> camera_list;
+	m_agoraManager->GetCameraList(camera_list);
+
+	if (id < camera_list.size()) {
+		m_agoraManager->SetPushCamera(id);
+	}
+}
+
+
+void CSDKdemoDlg::OnCbnSelchangeComboMicList()
+{
+	int id = m_cmbMicList.GetCurSel();
+	std::vector<CAgoraManager::MicProg> mic_list;
+	m_agoraManager->GetMicList(mic_list);
+
+	if (id < mic_list.size()) {
+		m_agoraManager->SetMic(id);
+	}
+}
+
+
+void CSDKdemoDlg::OnStnClickedStaticAudioDevice()
+{
+	// TODO: Add your control notification handler code here
+}
+
+
+void CSDKdemoDlg::OnStnClickedStaticVideoDevice()
+{
+	// TODO: Add your control notification handler code here
+}
+
+
+void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
+{
+	bool enable = m_btnEnableVideoObserver.GetCheck();
+	m_agoraManager->EnableVideoFrameObserver(enable);
 }

@@ -1,20 +1,27 @@
 #pragma once
 #include "IAgoraRtcEngine.h"
 
+#define INVALID_CONNECTION_ID 0xfffffff
+
 using namespace agora::rtc;
+
+class CAgoraManager;
 
 class CAGEngineEventHandler :
 	public IRtcEngineEventHandler
 {
 public:
-	CAGEngineEventHandler();
+	explicit CAGEngineEventHandler(CAgoraManager* manager);
 	~CAGEngineEventHandler();
-	void setMainWnd(HWND wnd);
+	void SetConnectionId(conn_id_t connId) { conn_id_ = connId; }
+	conn_id_t GetConnectionId() { return conn_id_; }
 	virtual void onJoinChannelSuccess(const char* channel, uid_t uid, int elapsed);
 	virtual void onLeaveChannel(const RtcStats& stat);
 	virtual void onUserJoined(uid_t uid, int elapsed);
 	virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
+	virtual void onError(int err, const char* msg);
 private:
-	HWND m_hMainWnd;
+	conn_id_t conn_id_ = INVALID_CONNECTION_ID;
+	CAgoraManager* manager_ = nullptr;
 };
 
