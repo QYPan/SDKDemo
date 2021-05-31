@@ -222,20 +222,20 @@ void CAgoraManager::SetWindowDesktopShowHwnd(HWND hwnd, agora::media::base::REND
 	printf("[I]: setupLocalVideo(screen), ret: %d\n", ret);
 }
 
-bool CAgoraManager::StartPushCamera(bool bWithMic, int nPushW, int nPushH) {
-	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFrameRate) {
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	VideoEncoderConfiguration cfg;
-	if (nPushW) {
-		cfg.dimensions.width = nPushW;
-	}
-	
-	if (nPushH) {
-		cfg.dimensions.height = nPushH;
-	}
+	cfg.dimensions.width = nPushW;
+	cfg.dimensions.height = nPushH;
+	cfg.frameRate = nPushFrameRate;
 
 	int ret = rtc_engine_->setVideoEncoderConfiguration(cfg);
 	printf("[I]: setVideoEncoderConfiguration(publish camera), ret: %d\n", ret);
+}
+
+bool CAgoraManager::StartPushCamera(bool bWithMic) {
+	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
@@ -286,6 +286,7 @@ bool CAgoraManager::StartPushScreen(bool bWithMic) {
 
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
+	param_.frameRate = 15;
 
 	int ret = -1;
 	int ret1 = -1;
@@ -474,7 +475,7 @@ bool CAgoraManager::IsPushCameraMicMute() {
 	return is_mute_mic_;
 }
 
-void CAgoraManager::SetPushCamera(int nCamID, int nW, int nH) {
+void CAgoraManager::SetPushCamera(int nCamID) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IVideoDeviceManager* vdm = nullptr;

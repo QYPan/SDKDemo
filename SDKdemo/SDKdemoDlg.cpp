@@ -454,7 +454,7 @@ void CSDKdemoDlg::OnBnClickedButtonPublishCamera()
 	}
 	else
 	{
-		m_agoraManager->StartPushCamera(true, 1280, 720);
+		m_agoraManager->StartPushCamera(true);
 		m_btnPublishCamera.SetWindowText(_T("Unpublish Camera"));
 	}
 }

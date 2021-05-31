@@ -71,11 +71,12 @@ public:
 
 
 	//摄像头相关
-	bool StartPushCamera(bool bWithMic = true, int nPushW = 0, int nPushH = 0);
+	bool StartPushCamera(bool bWithMic = true);
+	void UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFrameRate);
 	bool StopPushCamera();
 	bool IsPushCamera();
 	//设置采集摄像头
-	void SetPushCamera(int nCamID = -1, int nW = 0, int nH = 0);//-1为默认摄像头
+	void SetPushCamera(int nCamID = -1);//-1为默认摄像头
 	void GetCameraList(std::vector<CameraProg>& vCamera);//获得当前可采集摄像头列表及属性
 	//void GetCameraParamList(int nCamID, std::vector<CameraParam>& vParam);//获得当前指定摄像头参数
 	//设置摄像头显示窗口(0为取消指定窗口)
