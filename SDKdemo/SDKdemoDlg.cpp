@@ -521,7 +521,7 @@ void CSDKdemoDlg::OnBnClickedButtonPublishScreen()
 	}
 	else
 	{
-		m_agoraManager->StartPushScreen(true, 1280, 720);
+		m_agoraManager->StartPushScreen(true);
 		m_btnPublishScreen.SetWindowText(_T("Unpublish Screen"));
 	}
 }

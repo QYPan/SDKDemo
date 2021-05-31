@@ -1,8 +1,6 @@
 #pragma once
 #include "IAgoraRtcEngine.h"
 
-#define INVALID_CONNECTION_ID 0xfffffff
-
 using namespace agora::rtc;
 
 class CAgoraManager;
@@ -21,7 +19,7 @@ public:
 	virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
 	virtual void onError(int err, const char* msg);
 private:
-	conn_id_t conn_id_ = INVALID_CONNECTION_ID;
+	conn_id_t conn_id_ = agora::rtc::DUMMY_CONNECTION_ID;
 	CAgoraManager* manager_ = nullptr;
 };
 

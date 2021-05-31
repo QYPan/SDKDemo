@@ -1,6 +1,5 @@
 #pragma once
 #include "IAgoraRtcEngine.h"
-#include "CAGEngineEventHandler.h"
 #include "IAgoraMediaEngine.h"
 
 #include <vector>
@@ -46,7 +45,8 @@ public:
 
 
 	//推流屏幕相关功能
-	bool StartPushScreen(bool bWithMic = false, int nPushW = 0, int nPushH = 0);
+	bool StartPushScreen(bool bWithMic = false);
+	void UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFrameRate);
 	bool StopPushScreen();
 	bool IsPushScreen();
 
@@ -62,7 +62,7 @@ public:
 	//获得当前采集窗口/桌面尺寸
 	void GetWindowDesktopSize(int& nRetW, int& nRetH);
 	//设置采集图像显示窗口(0为取消指定窗口)
-	void SetWindowDesktopShowHwnd(HWND hwnd = 0);
+	void SetWindowDesktopShowHwnd(HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 	//设置暂停屏幕推流图像
 	void SetScreenPushPause(bool bPause = true);
 	bool IsScreenPushPause();
@@ -79,7 +79,7 @@ public:
 	void GetCameraList(std::vector<CameraProg>& vCamera);//获得当前可采集摄像头列表及属性
 	//void GetCameraParamList(int nCamID, std::vector<CameraParam>& vParam);//获得当前指定摄像头参数
 	//设置摄像头显示窗口(0为取消指定窗口)
-	void SetCameraShowHwnd(HWND hwnd = 0);
+	void SetCameraShowHwnd(HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 	//获得当前采集尺寸
 	void GetCameraSize(int& nRetW, int& nRetH);
 	//设置摄像头推流状态
@@ -88,13 +88,16 @@ public:
 	void SetPushCameraMicMute(bool bMute = true);
 	bool IsPushCameraMicMute();
 
-	void SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd = 0);
+	void SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 
 
 	//麦克相关
 	void SetMic(int nID = -1);//-1为默认麦克风
 	void GetMicList(std::vector<MicProg>& vMic);//获得当前麦克风列表及属性
 	void SetMicVolume(int nVol);
+
+	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送)
+	void SetPushSystemAudio(int nMode);
 
 
 	//播放指定远端uid对象
@@ -125,7 +128,6 @@ public:
 	int StopPreview();
 
 	void EnableVideoFrameObserver(bool enable);
-	agora::util::AutoPtr<agora::media::IMediaEngine>& GetMediaEngine();
 
 	// Rtc event
 	void OnJoinChannelSuccess(const char* channel, uid_t uid, int elapsed, conn_id_t connId);
@@ -139,16 +141,17 @@ private:
 
 	static CAgoraManager* instance_;
 	IRtcEngine* rtc_engine_ = nullptr;
+	agora::media::IMediaEngine* media_engine_ = nullptr;
 	CAGEngineEventHandler* camera_event_handler_ = nullptr;
 	CAGEngineEventHandler* screen_event_handler_ = nullptr;
 	VideoFrameObserver* video_frame_observer_ = nullptr;
 
 	agora::rtc::Rectangle region_rect_;
 
-	agora::util::AutoPtr<agora::media::IMediaEngine> media_engine_;
-
 	std::set<uid_t> users_in_channel_;
 	std::vector<agora::view_t> exclude_window_list_;
+
+	ScreenCaptureParameters param_;
 
 	bool is_joined_ = false;
 	bool is_publish_camera_ = false;
@@ -170,8 +173,10 @@ private:
 	agora::view_t camera_view_ = nullptr;
 	agora::view_t screen_view_ = nullptr;
 
-	conn_id_t camera_connId_ = INVALID_CONNECTION_ID;
-	conn_id_t screen_connId_ = INVALID_CONNECTION_ID;
+	conn_id_t camera_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
+	conn_id_t screen_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
+
+	int current_recording_mode_ = 0;
 
 	bool initialized_ = false;
 };
