@@ -13,6 +13,7 @@
 #include "CAgoraManager.h"
 #include "SimpleWindow.h"
 
+#include <fstream>
 #include <time.h>
 #include <string>
 
@@ -247,13 +248,21 @@ void CSDKdemoDlg::initCtrls()
 	m_remoteView.Create(NULL, NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_CLIPCHILDREN, CRect(0, 0, 1, 1), this, 1235);
 }
 
+static std::string GetAppId() {
+    std::ifstream in("d:/appid.txt");
+    std::string appid;
+    in >> appid;
+    in.close();
+    return appid;
+}
+
 void CSDKdemoDlg::initData()
 {
 	static bool done = false;
 	if(!done)
 	{
 		m_agoraManager = CAgoraManager::Inst();
-		m_agoraManager->Init("aab8b8f5a8cd4469a63042fcfafe7063");
+		m_agoraManager->Init(GetAppId().c_str());
 
 		std::vector<CAgoraManager::CameraProg> camera_list;
 		m_agoraManager->GetCameraList(camera_list);
