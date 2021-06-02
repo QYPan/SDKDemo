@@ -37,7 +37,8 @@ public:
 	//加入房间
 	bool JoinChannel(const char* lpChannelId,
 		const char* lpToken = nullptr, agora::rtc::uid_t uid = 0,
-		const char* lpSubToken = nullptr, agora::rtc::uid_t subuid = 0);
+		const char* lpSubToken = nullptr, agora::rtc::uid_t uidSub = 0,
+		const char* lpSrcToken = nullptr, agora::rtc::uid_t uidSrc = 0);
 	//离开房间
 	bool LeaveChannel();
 	//是否加入房间
@@ -107,6 +108,18 @@ public:
 	void StopVideo(agora::rtc::uid_t uid);
 	//指定远端uid对象设置静音状态
 	void MuteVideo(agora::rtc::uid_t uid, bool bMute = true);
+
+	//开始自定义推流
+	bool StartSourceVideo();
+	//停止自定义推流
+	bool StopPushSourceVideo();
+	//是否自定义推流
+	bool IsPushSourceVideo();
+	//推送视频帧(BGRA)
+	bool PushVideoFrame(unsigned char* pData, int nW, int nH, long long ms);
+	//推送音频帧(PCM-16)
+	bool PushAudioFrame(unsigned char* pData, int nSize, 
+		long lSampleRate = 48000, int nChannel = 2, long long ms = 0);
 
 
 	//获得图像数据RGBA

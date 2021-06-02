@@ -126,7 +126,8 @@ bool CAgoraManager::IsJoinChannel() {
 
 bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		const char* lpToken, agora::rtc::uid_t uid,
-		const char* lpSubToken, agora::rtc::uid_t subuid) {
+		const char* lpSubToken, agora::rtc::uid_t uidSub,
+		const char* lpSrcToken, agora::rtc::uid_t uidSrc) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if(is_enable_video_observer_ && video_frame_observer_) {
@@ -148,8 +149,8 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	}
 
 	int ret1 = 0;
-	if (subuid) {
-		screen_uid_ = subuid;
+	if (uidSub) {
+		screen_uid_ = uidSub;
 
 		ChannelMediaOptions op;
 		op.publishAudioTrack = false;
@@ -159,7 +160,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.autoSubscribeVideo = false;
 		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 
-		ret1 = rtc_engine_->joinChannelEx(lpSubToken, lpChannelId, subuid, op, screen_event_handler_, &screen_connId_);
+		ret1 = rtc_engine_->joinChannelEx(lpSubToken, lpChannelId, uidSub, op, screen_event_handler_, &screen_connId_);
 		printf("[I]: joinChannelEx, ret: %d\n", ret1);
 
 		screen_event_handler_->SetConnectionId(screen_connId_);	
