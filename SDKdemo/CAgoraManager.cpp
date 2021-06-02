@@ -347,6 +347,10 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.height = h;
 }
 
+void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
+
+}
+
 void CAgoraManager::SetPushFilter(HWND* pFilterHwndList, int nFilterNum) {
 	if (!pFilterHwndList) {
 		return;
@@ -613,10 +617,15 @@ void CAgoraManager::SetPushSystemAudio(int nMode) {
 		conn_id = screen_connId_;
 	}
 
-	rtc_engine_->enableLoopbackRecording(false, current_recording_mode_);
+	if (current_recording_mode_ == 1) {
+		rtc_engine_->enableLoopbackRecording(camera_connId_, false);
+	}
+	else if (current_recording_mode_ == 2) {
+		rtc_engine_->enableLoopbackRecording(screen_connId_, false);
+	}
 
 	if (nMode) {
-		rtc_engine_->enableLoopbackRecording(true, nMode);
+		rtc_engine_->enableLoopbackRecording(conn_id, true);
 	}
 
 	current_recording_mode_ = nMode;

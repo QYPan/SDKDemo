@@ -2,6 +2,8 @@
 #include "IAgoraRtcEngine.h"
 #include "IAgoraMediaEngine.h"
 
+#include <AGORA.h>
+
 #include <vector>
 #include <set>
 #include <string>
@@ -25,6 +27,12 @@ public:
 		int idx = -1;
 		std::string device_id;
 		std::string device_name_utf8;
+	};
+
+	enum PushSystemAudioOption {
+		PushSystemAudioOption_None = 0,
+		PushSystemAudioOption_Camera,
+		PushSystemAudioOption_Screen,
 	};
 public:
 	//首次调用需写入AppID
@@ -54,7 +62,7 @@ public:
 	//设置采集窗口(是否可以在推中设置)
 	void SetPushWindow(HWND hwnd = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	//void GetWindowList(std::vector<WinProg>& vWindows);//获得当前可采集窗口列表及属性
+	void GetWindowList(std::vector<WinProg>& vWindows);//获得当前可采集窗口列表及属性
 	//设置采集桌面(是否可以在推中设置)
 	void SetPushFilter(HWND* pFilterHwndList = nullptr, int nFilterNum = 0);
 	void SetPushDesktop(int nScreenID = 0,
@@ -98,7 +106,7 @@ public:
 	void GetMicList(std::vector<MicProg>& vMic);//获得当前麦克风列表及属性
 	void SetMicVolume(int nVol);
 
-	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送)
+	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送),参考PushSystemAudioOption,该函数只能在加入频道之后调用,因为只有加入频道后才能拿到connection id
 	void SetPushSystemAudio(int nMode);
 
 

@@ -12,6 +12,7 @@
 
 #include "CAgoraManager.h"
 #include "SimpleWindow.h"
+#include "WinEnumerImpl.h"
 
 #include <fstream>
 #include <time.h>
@@ -60,10 +61,6 @@ public:
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
-
-// 实现
-protected:
-	DECLARE_MESSAGE_MAP()
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -74,10 +71,6 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 }
-
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-END_MESSAGE_MAP()
-
 
 // CSDKdemoDlg 对话框
 
@@ -110,6 +103,8 @@ void CSDKdemoDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_AUDIO_DEVICE, m_textAudioDeviceList);
 	DDX_Control(pDX, IDC_STATIC_VIDEO_DEVICE, m_textVideoDeviceList);
 	DDX_Control(pDX, IDC_CHECK_VIDEO_OBSERVER, m_btnEnableVideoObserver);
+	DDX_Control(pDX, IDC_ENUM_WIN, m_btnEnumWin);
+	DDX_Control(pDX, IDC_ENUM_DISPLAY, m_btnEnumDisplay);
 }
 
 BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
@@ -132,6 +127,8 @@ BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
 	ON_STN_CLICKED(IDC_STATIC_AUDIO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticAudioDevice)
 	ON_STN_CLICKED(IDC_STATIC_VIDEO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticVideoDevice)
 	ON_BN_CLICKED(IDC_CHECK_VIDEO_OBSERVER, &CSDKdemoDlg::OnBnClickedCheckVideoObserver)
+	ON_BN_CLICKED(IDC_ENUM_DISPLAY, &CSDKdemoDlg::OnBnClickedEnumDisplay)
+	ON_BN_CLICKED(IDC_ENUM_WIN, &CSDKdemoDlg::OnBnClickedEnumWin)
 END_MESSAGE_MAP()
 
 
@@ -232,6 +229,13 @@ void CSDKdemoDlg::initCtrls()
 
 	m_cmbUsers.MoveWindow(base_left + col_space, base_top + row_space, base_width, base_height, TRUE);
 
+
+	m_btnEnumWin.SetWindowText(_T("Enum Win"));
+	m_btnEnumWin.MoveWindow(base_left + col_space, base_top + row_space * 2, base_width, base_height, TRUE);
+
+	m_btnEnumDisplay.SetWindowText(_T("Enum Display"));
+	m_btnEnumDisplay.MoveWindow(base_left + col_space, base_top + row_space * 3, base_width, base_height, TRUE);
+
 	m_textVideoDeviceList.SetWindowText(_T("Video Device:"));
 	m_textVideoDeviceList.MoveWindow(base_left, base_top + row_space * 13, 120, base_height, TRUE);
 	m_cmbCameraList.MoveWindow(base_left + 120, base_top + row_space * 13, base_width * 2, base_height, TRUE);
@@ -239,6 +243,8 @@ void CSDKdemoDlg::initCtrls()
 	m_textAudioDeviceList.SetWindowText(_T("Audio Device:"));
 	m_textAudioDeviceList.MoveWindow(base_left, base_top + row_space * 14, 120, base_height, TRUE);
 	m_cmbMicList.MoveWindow(base_left + 120, base_top + row_space * 14, base_width * 2, base_height, TRUE);
+
+	
 
 	//m_btnPreviewCamera.SetWindowText(_T("Preview Camera"));
 	//m_btnPreviewCamera.MoveWindow(rc.Width() / 2 + 80, rc.Height() - 200, 120, 40, TRUE);
@@ -644,4 +650,16 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 {
 	bool enable = m_btnEnableVideoObserver.GetCheck();
 	m_agoraManager->EnableVideoFrameObserver(enable);
+}
+
+void CSDKdemoDlg::OnBnClickedEnumDisplay()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+
+void CSDKdemoDlg::OnBnClickedEnumWin()
+{
+	std::list<std::string> vecFilters;
+	app::utils::WindowEnumer::EnumAllWindows(vecFilters);
 }

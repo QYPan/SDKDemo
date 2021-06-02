@@ -5,6 +5,14 @@
 #include <dwmapi.h>
 #include <Psapi.h>
 #include <tchar.h>
+#include <algorithm>
+
+#include <atlbase.h>
+#include <atlstr.h>
+
+#include "process.h"
+
+using namespace app::utils::process;
 
 namespace app {
 namespace utils {
@@ -96,6 +104,7 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
     if (styles & WS_CHILD)
       break;
 
+	//WinProg info;
     WindowEnumer::WINDOW_INFO info;
 
     RECT rc;
@@ -132,15 +141,23 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
     if (0 == ret)
       break;
 
-    info.hwnd = hwnd;
-    info.class_name = class_name;
-    info.window_name = window_name;
-    info.module_name = module_name;
 
-    auto windows = (std::map<std::wstring, std::list<WindowEnumer::WINDOW_INFO>>*)data;
-    auto itr = windows->find(info.module_name);
+	info.x = rc.left;
+	info.y = rc.top;
+	info.width = rc.right - rc.left;
+	info.height = rc.bottom - rc.top;
+	info.sourceId = hwnd;
+	info.sourceName = CT2A(window_name, CP_UTF8);
+	info.moduleName = CT2A(module_name);
+	info.isMinimizeWindow = ::IsIconic(hwnd);
+
+	int thumbWidth = 0, thumbHeight = 0;
+	info.hBitmap = GetProcessIconBitmap(module_name, &thumbWidth, &thumbHeight);
+    
+    auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
+    auto itr = windows->find(info.moduleName);
     if (itr == std::end(*windows)) {
-      windows->insert({ info.module_name,{info} });
+      windows->insert({ info.moduleName,{info} });
     }
     else {
       itr->second.push_back(info);
@@ -151,21 +168,21 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
   return TRUE;
 }
 
-std::map<std::wstring, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::wstring>& filters)
+std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::string>& filters)
 {
-  std::map<std::wstring, std::list<WindowEnumer::WINDOW_INFO>> windows;
-  ::EnumWindows(WindowEnumCallback, (LPARAM)&windows);
+	std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> windows;
+	::EnumWindows(WindowEnumCallback, (LPARAM)&windows);
 
-  for (auto filter : filters) {
-    auto itr = std::find_if(windows.begin(), windows.end(), 
-      [filter](const std::pair<std::wstring, std::list<WindowEnumer::WINDOW_INFO>>& a) {
-        return (a.first == filter || a.first.find(filter) != std::wstring::npos); 
-      });
-    if (itr != windows.end())
-      windows.erase(itr);
-  }
+	for (auto filter : filters) {
+		auto itr = std::find_if(windows.begin(), windows.end(),
+			[filter](const std::pair<std::string, std::list<WindowEnumer::WINDOW_INFO>>& a) {
+			return (a.first == filter || a.first.find(filter) != std::wstring::npos);
+		});
+		if (itr != windows.end())
+			windows.erase(itr);
+	}
 
-  return windows;
+	return windows;
 }
 
 }

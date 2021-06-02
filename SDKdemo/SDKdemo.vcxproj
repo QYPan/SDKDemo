@@ -23,13 +23,13 @@
     <ProjectGuid>{AAA760DF-FED0-4A15-AF95-B6165B955004}</ProjectGuid>
     <Keyword>MFCProj</Keyword>
     <RootNamespace>SDKdemo</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
     <SpectreMitigation>false</SpectreMitigation>
@@ -94,7 +94,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;..\agora;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -193,6 +193,7 @@
     <ClInclude Include="AGEventDef.h" />
     <ClInclude Include="CAGEngineEventHandler.h" />
     <ClInclude Include="CAgoraManager.h" />
+    <ClInclude Include="process.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SDKdemo.h" />
     <ClInclude Include="SDKdemoDlg.h" />
@@ -205,6 +206,7 @@
   <ItemGroup>
     <ClCompile Include="CAGEngineEventHandler.cpp" />
     <ClCompile Include="CAgoraManager.cpp" />
+    <ClCompile Include="process.cpp" />
     <ClCompile Include="SDKdemo.cpp" />
     <ClCompile Include="SDKdemoDlg.cpp" />
     <ClCompile Include="SimpleWindow.cpp" />

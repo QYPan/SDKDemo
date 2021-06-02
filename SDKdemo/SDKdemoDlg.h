@@ -98,4 +98,9 @@ private:
 	SimpleWindow* m_screen_win = nullptr;
 
 	std::map<agora::rtc::uid_t, SimpleWindow*> m_users_win;
+public:
+	CButton m_btnEnumWin;
+	CButton m_btnEnumDisplay;
+	afx_msg void OnBnClickedEnumDisplay();
+	afx_msg void OnBnClickedEnumWin();
 };
