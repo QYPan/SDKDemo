@@ -166,6 +166,7 @@ private:
 	agora::media::IMediaEngine* media_engine_ = nullptr;
 	CAGEngineEventHandler* camera_event_handler_ = nullptr;
 	CAGEngineEventHandler* screen_event_handler_ = nullptr;
+	CAGEngineEventHandler* custom_event_handler_ = nullptr;
 	VideoFrameObserver* video_frame_observer_ = nullptr;
 
 	agora::rtc::Rectangle region_rect_;
@@ -184,19 +185,24 @@ private:
 	bool is_preview_ = false;
 	bool is_enable_video_observer_ = false;
 
+	bool is_publish_custom_ = false;
+
 	int push_screen_width_ = 0;
 	int push_screen_height_ = 0;
 
 	uid_t camera_uid_ = 0;
 	uid_t screen_uid_ = 0;
+	uid_t custom_uid_ = 0;
 
 	HWND share_win_ = 0;
 
 	agora::view_t camera_view_ = nullptr;
 	agora::view_t screen_view_ = nullptr;
+	agora::view_t custom_view_ = nullptr;
 
 	conn_id_t camera_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 	conn_id_t screen_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
+	conn_id_t custom_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 
 	int current_recording_mode_ = 0;
 
