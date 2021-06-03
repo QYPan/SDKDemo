@@ -5,6 +5,7 @@
 //
 #pragma once
 
+#include <cstdlib>
 #include <cstdint>
 
 namespace agora {
@@ -72,7 +73,8 @@ struct LogConfig
   /** The log level, set LOG_LEVEL_INFO to use default log level
    */
   LOG_LEVEL level;
-  LogConfig() : filePath(nullptr), fileSizeInKB(DEFAULT_LOG_SIZE_IN_KB), level(LOG_LEVEL::LOG_LEVEL_INFO) {}
+
+  LogConfig() : filePath(NULL), fileSizeInKB(DEFAULT_LOG_SIZE_IN_KB), level(LOG_LEVEL::LOG_LEVEL_INFO) {}
 };
 } //namespace commons
 } //namespace agora

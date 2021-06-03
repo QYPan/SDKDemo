@@ -35,7 +35,10 @@ class VideoFrameObserver : public agora::media::IVideoFrameObserver {
   virtual bool onRenderVideoFrame(agora::rtc::uid_t uid, agora::rtc::conn_id_t connectionId,
                                   VideoFrame& videoFrame);
 
+  virtual bool onSecondaryCameraCaptureVideoFrame(VideoFrame& videoFrame) { return false; }
   virtual bool onMediaPlayerVideoFrame(VideoFrame& videoFrame, int mediaPlayerId) { return false; }
+  virtual bool onSecondaryScreenCaptureVideoFrame(VideoFrame& videoFrame) { return false; }
+  virtual bool onTranscodedVideoFrame(VideoFrame& videoFrame) { return false; }
 
   void setVideoPixelFormatPreference(agora::media::base::VIDEO_PIXEL_FORMAT type) { m_videoFrameType = type; }
 

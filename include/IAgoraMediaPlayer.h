@@ -26,7 +26,7 @@ class IMediaPlayerSourceObserver;
  */
 class IMediaPlayer : public RefCountInterface {
 protected:
-  virtual ~IMediaPlayer() = default;
+  virtual ~IMediaPlayer() {}
 
 public:
   virtual int initialize(base::IAgoraService* agora_service) = 0;
@@ -142,6 +142,15 @@ public:
    */
   virtual int setPlayerOption(const char* key, int value) = 0;
 
+  /**
+   * change player option before play a file
+   * @param key the key of the option param
+   * @param value the value of option param
+   * @return
+   * - 0: Success.
+   * - < 0: Failure.
+   */
+  virtual int setPlayerOption(const char* key, const char* value) = 0;
   /**
    * take screenshot while playing  video
    * @param filename the filename of screenshot file
@@ -291,6 +300,8 @@ public:
    * @return int < 0 on behalf of an error, the value corresponds to one of MEDIA_PLAYER_ERROR
    */
   virtual int unregisterVideoFrameObserver(agora::media::base::IVideoFrameObserver* observer) = 0;
+
+  virtual const char* getPlayerSdkVersion() = 0;
 };
 
 } //namespace rtc

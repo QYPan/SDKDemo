@@ -21,7 +21,7 @@ class IMediaPlayerSourceObserver;
  */
 class IMediaPlayerSource : public RefCountInterface {
 protected:
-  virtual ~IMediaPlayerSource() = default;
+  virtual ~IMediaPlayerSource() {}
 
 public:
 
@@ -162,6 +162,16 @@ public:
   virtual int setPlayerOption(const char* key, int64_t value) = 0;
 
   /**
+   * Changes the player option before playing a file.
+   * @param key The key of the option paramemter.
+   * @param value The value of option parameter.
+   * @return
+   * - 0: Success.
+   * - < 0: Failure. See {@link media::base::MEDIA_PLAYER_ERROR MEDIA_PLAYER_ERROR}.
+   */
+  virtual int setPlayerOption(const char* key, const char* value) = 0;
+
+  /**
    * Takes a screenshot when playing a video file.
    * @param filename The filename of the screenshot file.
    * @return
@@ -239,7 +249,7 @@ public:
  */
 class IMediaPlayerSourceObserver {
  public:
-  virtual ~IMediaPlayerSourceObserver() = default;
+  virtual ~IMediaPlayerSourceObserver() {}
 
   /**
    * @brief Reports the playback state change.
@@ -277,6 +287,14 @@ class IMediaPlayerSourceObserver {
    * @param length The data length (bytes).
    */
   virtual void onMetaData(const void* data, int length) = 0;
+
+
+  /**
+   * @brief Triggered when play buffer updated, once every 1 second
+   *
+   * @param int cached buffer during playing, in milliseconds
+   */
+  virtual void onPlayBufferUpdated(int64_t playCachedBuffer) = 0;
 
   /**
    * @brief Occurs when one playback of the media file is completed.

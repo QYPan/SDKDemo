@@ -212,7 +212,7 @@ void CSDKdemoDlg::initCtrls()
 	m_btnPublishScreen.SetWindowText(_T("Publish Screen"));
 	m_btnPublishScreen.MoveWindow(base_left, base_top + row_space * 3, base_width, base_height, TRUE);
 
-	m_btnPreviewScreen.SetWindowText(_T("Allocate View"));
+	m_btnPreviewScreen.SetWindowText(_T("Allocate Local View"));
 	m_btnPreviewScreen.MoveWindow(base_left, base_top + row_space * 4, base_width, base_height, TRUE);
 
 	m_btnMuteCamera.SetWindowText(_T("Pause Camera"));
@@ -226,6 +226,7 @@ void CSDKdemoDlg::initCtrls()
 
 	m_btnEnableVideoObserver.SetWindowText(_T("Enable Video Observer"));
 	m_btnEnableVideoObserver.MoveWindow(base_left, base_top + row_space * 8, base_width + 100, base_height, TRUE);
+	m_btnEnableVideoObserver.ShowWindow(SW_HIDE);
 
 	m_btnUpdateUsers.SetWindowText(_T("Update Users"));
 	m_btnUpdateUsers.MoveWindow(base_left + col_space, base_top, base_width, base_height, TRUE);
@@ -262,6 +263,7 @@ void CSDKdemoDlg::initData()
 	if(!done)
 	{
 		m_agoraManager = CAgoraManager::Inst();
+		m_agoraManager->EnableVideoFrameObserver(true);
 		m_agoraManager->Init(GetAppId().c_str());
 
 		std::vector<CAgoraManager::CameraProg> camera_list;

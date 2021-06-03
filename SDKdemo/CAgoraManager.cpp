@@ -238,6 +238,8 @@ void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFram
 bool CAgoraManager::StartPushCamera(bool bWithMic) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
+	rtc_engine_->enableLocalVideo(true);
+
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
@@ -256,11 +258,7 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 bool CAgoraManager::StopPushCamera() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-	ChannelMediaOptions op;
-	op.publishCameraTrack = false;
-	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
-	printf("[I]: updateChannelMediaOptions(unpublish camera), ret: %d\n", ret);
-
+	int ret = rtc_engine_->enableLocalVideo(false);
 	if (ret == 0) {
 		is_publish_camera_ = false;
 	}
@@ -451,8 +449,10 @@ bool CAgoraManager::GetScreenImage(BYTE* pData, int& nRetW, int& nRetH) {
 void CAgoraManager::SetPushCameraPause(bool bPause) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	int ret = rtc_engine_->muteLocalVideoStream(bPause);
-	printf("[I]: muteLocalVideoStream, mute: %d, ret: %d\n", bPause, ret);
+	ChannelMediaOptions op;
+	op.publishCameraTrack = (!bPause);
+	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
+	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
 	if (ret == 0) {
 		is_mute_camera_ = bPause;
 	}
@@ -665,36 +665,15 @@ void CAgoraManager::OnJoinChannelSuccess(const char* channel, uid_t uid, int ela
 }
 
 void CAgoraManager::SetScreenPushPause(bool bPause) {
-	if (bPause) {
-		ChannelMediaOptions op;
-		op.publishScreenTrack = false;
-		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-		rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->stopScreenCapture();
-		printf("[I]: stopScreenCapture, ret: %d\n", ret);
-		ScreenCaptureParameters param;
-		param.dimensions.width = push_screen_width_;
-		param.dimensions.height = push_screen_height_;
-		param.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
-		param.excludeWindowCount = exclude_window_list_.size();
-
-		if (share_win_) {
-			ret = rtc_engine_->startScreenCaptureByWindowId((agora::view_t)share_win_, region_rect_, param);
-			printf("[I]: startScreenCaptureByWindowId, ret: %d\n", ret);
-		} else {
-			ret = rtc_engine_->startScreenCaptureByScreenRect(agora::rtc::Rectangle(), region_rect_, param);
-			printf("[I]: startScreenCaptureByScreenRect, ret: %d\n", ret);
-		}
-
-	} else {
-		ChannelMediaOptions op;
-		op.publishScreenTrack = true;
-		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
-		rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
+	ChannelMediaOptions op;
+	op.publishScreenTrack = (!bPause);
+	int ret = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
+	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
+	if (ret == 0) {
+		is_mute_screen_ = bPause;
 	}
-
-	is_mute_screen_ = bPause;
 }
 
 bool CAgoraManager::IsScreenPushPause() {

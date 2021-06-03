@@ -25,7 +25,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif  // !WIN32_LEAN_AND_MEAN
-
+#if defined(__aarch64__)
+#include <arm64intr.h>
+#endif
 #include <Windows.h>
 
 #if defined(AGORARTC_EXPORT)
@@ -62,7 +64,7 @@ class JsonWrapper;
 }  // namespace cjson
 }  // namespace commons
 
-using any_document_t = commons::cjson::JsonWrapper;
+typedef commons::cjson::JsonWrapper any_document_t;
 
 namespace base {
 class IEngineBase;
@@ -84,16 +86,16 @@ class AutoPtr {
   typedef T* pointer_type;
 
  public:
-  explicit AutoPtr(pointer_type p = nullptr) : ptr_(p) {}
+  explicit AutoPtr(pointer_type p = NULL) : ptr_(p) {}
 
   ~AutoPtr() {
     if (ptr_) {
       ptr_->release();
-      ptr_ = nullptr;
+      ptr_ = NULL;
     }
   }
 
-  operator bool() const { return (ptr_ != nullptr); }
+  operator bool() const { return (ptr_ != NULL); }
 
   value_type& operator*() const { return *get(); }
 
@@ -107,7 +109,7 @@ class AutoPtr {
     return ret;
   }
 
-  void reset(pointer_type ptr = nullptr) {
+  void reset(pointer_type ptr = NULL) {
     if (ptr != ptr_ && ptr_) {
       ptr_->release();
     }
@@ -117,12 +119,12 @@ class AutoPtr {
 
   template <class C1, class C2>
   bool queryInterface(C1* c, C2 iid) {
-    pointer_type p = nullptr;
+    pointer_type p = NULL;
     if (c && !c->queryInterface(iid, reinterpret_cast<void**>(&p))) {
       reset(p);
     }
 
-    return (p != nullptr);
+    return (p != NULL);
   }
 
  private:
@@ -145,7 +147,7 @@ class CopyableAutoPtr : public AutoPtr<T> {
     return *this;
   }
   pointer_type clone() const {
-    if (!this->get()) return nullptr;
+    if (!this->get()) return NULL;
     return this->get()->clone();
   }
 };
@@ -705,7 +707,7 @@ enum ERROR_CODE_TYPE {
   ERR_CERT_DUEDATE = 167,
   ERR_CERT_REQUEST = 168,
 
-// PcmSend Error num
+  // PcmSend Error num
   ERR_PCMSEND_FORMAT =200,           // unsupport pcm format
   ERR_PCMSEND_BUFFEROVERFLOW = 201,  // buffer overflow, the pcm send rate too quickly
 
@@ -1119,6 +1121,8 @@ struct UserInfo {
    * - false: The user has disabled video.
    */
   bool hasVideo;
+
+  UserInfo() : hasAudio(false), hasVideo(false) {}
 };
 
 typedef util::AList<UserInfo> UserList;
@@ -1369,6 +1373,9 @@ struct VideoDimensions {
   int height;
   VideoDimensions() : width(640), height(480) {}
   VideoDimensions(int w, int h) : width(w), height(h) {}
+  bool operator==(const VideoDimensions& rhs) const {
+    return width == rhs.width && height == rhs.height;
+  }
 };
 
 /**
@@ -1425,10 +1432,14 @@ enum VIDEO_CODEC_TYPE {
    * 6: Generic.
    */
   VIDEO_CODEC_GENERIC = 6,
-  /** 
-   * 7: Generic H264. 
+  /**
+   * 7: Generic H264.
    */
   VIDEO_CODEC_GENERIC_H264 = 7,
+  /**
+   * 20: JPEG.
+   */
+  VIDEO_CODEC_GENERIC_JPEG = 20,
 };
 
 /**
@@ -1471,6 +1482,57 @@ enum AUDIO_CODEC_TYPE {
 };
 
 /**
+ * audio encoding type of audio encoded frame observer.
+ */
+enum AUDIO_ENCODING_TYPE {
+  /**
+   * 1: codecType AAC; sampleRate 16000; quality low which around 1.2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_16000_LOW = 0x010101,
+  /**
+   * 1: codecType AAC; sampleRate 16000; quality medium which around 2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_16000_MEDIUM = 0x010102,
+  /**
+   * 1: codecType AAC; sampleRate 32000; quality low which around 1.2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_32000_LOW = 0x010201,
+  /**
+   * 1: codecType AAC; sampleRate 32000; quality medium which around 2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_32000_MEDIUM = 0x010202,
+  /**
+   * 1: codecType AAC; sampleRate 32000; quality high which around 3.5 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_32000_HIGH = 0x010203,
+  /**
+   * 1: codecType AAC; sampleRate 48000; quality medium which around 2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_48000_MEDIUM = 0x010302,
+  /**
+   * 1: codecType AAC; sampleRate 48000; quality high which around 3.5 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_AAC_48000_HIGH = 0x010303,
+
+  /**
+   * 1: codecType OPUS; sampleRate 16000; quality low which around 1.2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_OPUS_16000_LOW = 0x020101,
+  /**
+   * 1: codecType OPUS; sampleRate 16000; quality medium which around 2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_OPUS_16000_MEDIUM = 0x020102,
+  /**
+   * 1: codecType OPUS; sampleRate 48000; quality medium which around 2 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_OPUS_48000_MEDIUM = 0x020302,
+  /**
+   * 1: codecType OPUS; sampleRate 48000; quality high which around 3.5 MB after 10 minutes
+   */
+  AUDIO_ENCODING_TYPE_OPUS_48000_HIGH = 0x020303,
+};
+
+/**
  * Watermark fit mode
  */
 enum WATERMARK_FIT_MODE {
@@ -1487,30 +1549,44 @@ enum WATERMARK_FIT_MODE {
 };
 
 /**
- * The definition of the EncodedAudioFrameInfo struct.
+ * advanced settings of encoded audio frame.
  */
-struct EncodedAudioFrameInfo {
-  EncodedAudioFrameInfo()
-      : speech(true),
-        codec(AUDIO_CODEC_AACLC),
-        sampleRateHz(0),
-        samplesPerChannel(0),
-        sendEvenIfEmpty(true),
-        numberOfChannels(0) {}
+struct EncodedAudioFrameAdvancedSettings {
+  EncodedAudioFrameAdvancedSettings()
+    : speech(true),
+      sendEvenIfEmpty(true) {}
 
-  EncodedAudioFrameInfo(const EncodedAudioFrameInfo& rhs)
-      : speech(rhs.speech),
-        codec(rhs.codec),
-        sampleRateHz(rhs.sampleRateHz),
-        samplesPerChannel(rhs.samplesPerChannel),
-        sendEvenIfEmpty(rhs.sendEvenIfEmpty),
-        numberOfChannels(rhs.numberOfChannels) {}
   /**
    * Determines whether the audio source is speech.
    * - true: (Default) The audio source is speech.
    * - false: The audio source is not speech.
    */
   bool speech;
+  /**
+   * Whether to send the audio frame even when it is empty.
+   * - true: (Default) Send the audio frame even when it is empty.
+   * - false: Do not send the audio frame when it is empty.
+   */
+  bool sendEvenIfEmpty;
+
+};
+
+/**
+ * The definition of the EncodedAudioFrameInfo struct.
+ */
+struct EncodedAudioFrameInfo {
+  EncodedAudioFrameInfo()
+      : codec(AUDIO_CODEC_AACLC),
+        sampleRateHz(0),
+        samplesPerChannel(0),
+        numberOfChannels(0) {}
+
+  EncodedAudioFrameInfo(const EncodedAudioFrameInfo& rhs)
+      : codec(rhs.codec),
+        sampleRateHz(rhs.sampleRateHz),
+        samplesPerChannel(rhs.samplesPerChannel),
+        numberOfChannels(rhs.numberOfChannels),
+        advancedSettings(rhs.advancedSettings) {}
   /**
    * The audio codec: #AUDIO_CODEC_TYPE.
    */
@@ -1526,15 +1602,13 @@ struct EncodedAudioFrameInfo {
    */
   int samplesPerChannel;
   /**
-   * Whether to send the audio frame even when it is empty.
-   * - true: (Default) Send the audio frame even when it is empty.
-   * - false: Do not send the audio frame when it is empty.
-   */
-  bool sendEvenIfEmpty;
-  /**
    * The number of audio channels of the audio frame.
    */
   int numberOfChannels;
+  /**
+   * The advanced settings of the audio frame.
+   */
+  EncodedAudioFrameAdvancedSettings advancedSettings;
 };
 /**
  * The definition of the AudioPcmDataInfo struct.
@@ -1833,17 +1907,15 @@ struct VideoEncoderConfiguration {
         mirrorMode(VIDEO_MIRROR_MODE_DISABLED) {}
 };
 
-enum CAMERA_DIRECTION {
-  /** The rear camera. */
-  CAMERA_REAR = 0,
-  /** The front camera. */
-  CAMERA_FRONT = 1,
-};
-
-/** Camera capturer configuration.*/
-struct CameraCapturerConfiguration {
-  /** Camera direction settings (for Android/iOS only). See: #CAMERA_DIRECTION. */
-  CAMERA_DIRECTION cameraDirection;
+/** Data stream config
+*/
+struct DataStreamConfig {
+   /** syncWithAudio Sets whether or not the recipients receive the data stream sync with current audio stream.
+    */
+   bool syncWithAudio;
+   /** ordered Sets whether or not the recipients receive the data stream in the sent order:
+    */
+   bool ordered;
 };
 
 /**
@@ -1863,6 +1935,9 @@ struct SimulcastStreamConfig {
    */
   int framerate;
   SimulcastStreamConfig() : dimensions(160, 120), bitrate(65), framerate(5) {}
+  bool operator==(const SimulcastStreamConfig& rhs) const {
+    return dimensions == rhs.dimensions && bitrate == rhs.bitrate && framerate == rhs.framerate;
+  }
 };
 
 /**
@@ -2020,6 +2095,18 @@ struct RtcStats {
    */
   double cpuTotalUsage;
   /**
+   * The memory usage ratio of the app (%).
+   */
+  double memoryAppUsageRatio;
+  /**
+   * The memory usage ratio of the system (%).
+   */
+  double memoryTotalUsageRatio;
+  /**
+   * The memory usage of the app (KB).
+   */
+  int memoryAppUsageInKbytes;
+  /**
    * The time elapsed from the when the app starts connecting to an Agora channel
    * to when the connection is established. 0 indicates that this member does not apply.
    */
@@ -2096,6 +2183,9 @@ struct RtcStats {
       userCount(0),
       cpuAppUsage(0.0),
       cpuTotalUsage(0.0),
+      memoryAppUsageRatio(0.0),
+      memoryTotalUsageRatio(0.0),
+      memoryAppUsageInKbytes(0),
       connectTimeMs(0),
       firstAudioPacketDuration(0),
       firstVideoPacketDuration(0),
@@ -2116,16 +2206,41 @@ struct RtcStats {
 enum VIDEO_SOURCE_TYPE {
   /** Video captured by the camera.
    */
-  VIDEO_SOURCE_CAMERA,
+  VIDEO_SOURCE_CAMERA_PRIMARY,
+  VIDEO_SOURCE_CAMERA = VIDEO_SOURCE_CAMERA_PRIMARY,
+  /** Video captured by the secondary camera.
+   */
+  VIDEO_SOURCE_CAMERA_SECONDARY,
   /** Video for screen sharing.
    */
-  VIDEO_SOURCE_SCREEN,
+  VIDEO_SOURCE_SCREEN_PRIMARY,
+  VIDEO_SOURCE_SCREEN = VIDEO_SOURCE_SCREEN_PRIMARY,
+  /** Video for secondary screen sharing.
+   */
+  VIDEO_SOURCE_SCREEN_SECONDARY,
+  /** Not define.
+   */
+  VIDEO_SOURCE_CUSTOM,
   /** Video for media player sharing.
    */
   VIDEO_SOURCE_MEDIA_PLAYER,
-  /** Video for custom video.
+  /** Video for png image.
    */
-  VIDEO_SOURCE_CUSTOM,
+  VIDEO_SOURCE_RTC_IMAGE_PNG,
+  /** Video for png image.
+   */
+  VIDEO_SOURCE_RTC_IMAGE_JPEG,
+  /** Video for png image.
+   */
+  VIDEO_SOURCE_RTC_IMAGE_GIF,
+  /** Remote video received from network.
+   */
+  VIDEO_SOURCE_REMOTE,
+  /** Video for transcoded.
+   */
+  VIDEO_SOURCE_TRANSCODED,
+
+  VIDEO_SOURCE_UNKNOWN = 100
 };
 
 /**
@@ -2193,6 +2308,23 @@ struct RemoteAudioStats
    * audio is available.
    */
   int frozenRate;
+  /**
+   * The quality of the remote audio stream as determined by the Agora
+   * real-time audio MOS (Mean Opinion Score) measurement method in the
+   * reported interval. The return value ranges from 0 to 500. Dividing the
+   * return value by 100 gets the MOS score, which ranges from 0 to 5. The
+   * higher the score, the better the audio quality.
+   * 
+   * | MOS score       | Perception of audio quality                                                                                                                                 |
+   * |-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+   * | Greater than 4  | Excellent. The audio sounds clear and smooth.                                                                                                               |
+   * | From 3.5 to 4   | Good. The audio has some perceptible impairment, but still sounds clear.                                                                                    |
+   * | From 3 to 3.5   | Fair. The audio freezes occasionally and requires attentive listening.                                                                                      |
+   * | From 2.5 to 3   | Poor. The audio sounds choppy and requires considerable effort to understand.                                                                               |
+   * | From 2 to 2.5   | Bad. The audio has occasional noise. Consecutive audio dropouts occur, resulting in some information loss. The users can communicate only with difficulty.  |
+   * | Less than 2     | Very bad. The audio has persistent noise. Consecutive audio dropouts are frequent, resulting in severe information loss. Communication is nearly impossible. |
+   */
+  int mosValue;
   RemoteAudioStats() :
     uid(0),
     quality(0),
@@ -2203,7 +2335,8 @@ struct RemoteAudioStats
     receivedSampleRate(0),
     receivedBitrate(0),
     totalFrozenTime(0),
-    frozenRate(0) {}
+    frozenRate(0),
+    mosValue(0) {}
 };
 
 /**
@@ -2255,36 +2388,29 @@ enum AUDIO_SCENARIO_TYPE {
    */
   AUDIO_SCENARIO_DEFAULT = 0,
   /**
-   * 1: The entertainment scenario, which supports voice during gameplay.
-   */
-  AUDIO_SCENARIO_CHATROOM_ENTERTAINMENT = 1,
-  /**
-   * 2: The education scenario, which prioritizes smoothness and stability.
-   */
-  AUDIO_SCENARIO_EDUCATION = 2,
-  /**
    * 3: (Recommended) The live gaming scenario, which needs to enable gaming
    * audio effects in the speaker. Choose this scenario to achieve high-fidelity
    * music playback.
    */
   AUDIO_SCENARIO_GAME_STREAMING = 3,
   /**
-   * 4: The showroom scenario, which optimizes the audio quality with professional
-   * external equipment.
+   * 5: The chatroom scenario, which needs to keep recording when setClientRole to audience.
+   * Normally, app developer can also use mute api to achieve the same result,
+   * and we implement this 'non-orthogonal' behavior only to make API backward compatible.
    */
-  AUDIO_SCENARIO_SHOWROOM = 4,
-  /**
-   * 5: The gaming scenario.
-   */
-  AUDIO_SCENARIO_CHATROOM_GAMING = 5,
+  AUDIO_SCENARIO_CHATROOM = 5,
   /**
    * 6: (Recommended) The scenario requiring high-quality audio.
    */
   AUDIO_SCENARIO_HIGH_DEFINITION = 6,
   /**
-   * 7: The reserved parameter.
+   * 7: Chorus
    */
-  AUDIO_SCENARIO_NUM = 7,
+  AUDIO_SCENARIO_CHORUS = 7,
+  /**
+   * 8: Reserved.
+   */
+  AUDIO_SCENARIO_NUM = 8,
 };
 
 /**
@@ -2428,7 +2554,13 @@ enum LOCAL_VIDEO_STREAM_ERROR {
   /** 4: The local video capture fails. Check whether the capturing device is working properly. */
   LOCAL_VIDEO_STREAM_ERROR_CAPTURE_FAILURE = 4,
   /** 5: The local video encoding fails. */
-  LOCAL_VIDEO_STREAM_ERROR_ENCODE_FAILURE = 5
+  LOCAL_VIDEO_STREAM_ERROR_ENCODE_FAILURE = 5,
+  /** 6: The local video capturing device not avalible due to app did enter background.*/
+  LOCAL_VIDEO_STREAM_ERROR_BACKGROUD = 6,
+  /** 7: The local video capturing device not avalible because the app is running in a multi-app layout (generally on the pad) */
+  LOCAL_VIDEO_STREAM_ERROR_MULTIPLE_FOREGROUND_APPS = 7,
+  /** 8: The local video capturing device  temporarily being made unavailable due to system pressure. */
+  LOCAL_VIDEO_STREAM_ERROR_SYSTEM_PRESSURE = 8
 };
 
 /**
@@ -2596,13 +2728,20 @@ enum REMOTE_VIDEO_STATE_REASON {
  */
 struct VideoTrackInfo {
   VideoTrackInfo()
-  : ownerUid(0), trackId(0), connectionId(0)
+  : isLocal(false), ownerUid(0), trackId(0), connectionId(0)
   , streamType(VIDEO_STREAM_HIGH), codecType(VIDEO_CODEC_H264)
-  , encodedFrameOnly(false), sourceType(VIDEO_SOURCE_CAMERA) {}
+  , encodedFrameOnly(false), sourceType(VIDEO_SOURCE_CAMERA_PRIMARY) {}
+  /**
+   * Whether the video track is local or remote.
+   * - true: The video track is local.
+   * - false: The video track is remote.
+   */
+  bool isLocal;
   /**
    * ID of the user who publishes the video track.
    */
   uid_t ownerUid;
+
   /**
    * ID of the video track.
    */
@@ -2632,6 +2771,32 @@ struct VideoTrackInfo {
 };
 
 /**
+ * The downscale level of the remote video stream . The higher the downscale level, the more the video downscales.
+ */
+enum REMOTE_VIDEO_DOWNSCALE_LEVEL {
+  /**
+   * No downscale.
+   */
+  REMOTE_VIDEO_DOWNSCALE_LEVEL_NONE,
+  /**
+   * Downscale level 1.
+   */
+  REMOTE_VIDEO_DOWNSCALE_LEVEL_1,
+  /**
+   * Downscale level 2.
+   */
+  REMOTE_VIDEO_DOWNSCALE_LEVEL_2,
+  /**
+   * Downscale level 3.
+   */
+  REMOTE_VIDEO_DOWNSCALE_LEVEL_3,
+  /**
+   * Downscale level 4.
+   */
+  REMOTE_VIDEO_DOWNSCALE_LEVEL_4,
+};
+
+/**
  * The definition of the AudioVolumeInfo struct.
  */
 struct AudioVolumeInfo {
@@ -2644,6 +2809,8 @@ struct AudioVolumeInfo {
    * The volume of the speaker that ranges from 0 to 255.
    */
   unsigned int volume;  // [0,255]
+
+  AudioVolumeInfo() : uid(0), userId(0), volume(0) {}
 };
 
 /**
@@ -2664,6 +2831,8 @@ class IPacketObserver {
      * The size of the audio packet.
      */
     unsigned int size;
+
+    Packet() : buffer(NULL), size(0) {}
   };
   /**
    * Occurs when the SDK is ready to send the audio packet.
@@ -2708,9 +2877,9 @@ class IVideoEncodedImageReceiver {
    * @param imageBuffer The pointer to the video image buffer.
    * @param length The data length of the video image.
    * @param videoEncodedFrameInfo The information of the encoded video frame: EncodedVideoFrameInfo.
-   * @return Determines whether to send the video image to the SDK if post-processing fails.
-   * - true: Send it to the SDK.
-   * - false: Do not send it to the SDK.
+   * @return Determines whether to accept encoded video image.
+   * - true: Accept.
+   * - false: Do not accept.
    */
   virtual bool OnEncodedVideoImageReceived(const uint8_t* imageBuffer, size_t length,
                                            const EncodedVideoFrameInfo& videoEncodedFrameInfo) = 0;
@@ -2901,7 +3070,6 @@ enum RTMP_STREAM_PUBLISH_ERROR {
 /** The definition of the RtcImage struct.
  */
 typedef struct RtcImage {
-  RtcImage() : url(NULL), x(0), y(0), width(0), height(0) {}
   /**
    * The URL address of the watermark on the video.
    */
@@ -2928,6 +3096,8 @@ typedef struct RtcImage {
    * Order attribute for an ordering of overlapping two-dimensional objects.
    */
   int zOrder;
+
+  RtcImage() : url(NULL), x(0), y(0), width(0), height(0), zOrder(0) {}
 } RtcImage;
 
 /**
@@ -3155,6 +3325,96 @@ struct LiveTranscoding {
         audioBitrate(48),
         audioChannels(1),
         audioCodecProfile(AUDIO_CODEC_PROFILE_LC_AAC) {}
+};
+
+/**
+ * The definition of the LocalTranscodingVideoStream struct.
+ */
+struct TranscodingVideoStream {
+  /**
+   * Source type of video stream.
+   */
+  VIDEO_SOURCE_TYPE sourceType;
+  /**
+   * Remote user uid if sourceType is VIDEO_SOURCE_REMOTE.
+   */
+  uid_t remoteUserUid;
+  /**
+   * connectionId of Remote user uid if sourceType is VIDEO_SOURCE_REMOTE.
+   * Set to DEFAULT_CONNECTION_ID if you only join single channel.
+   */
+  conn_id_t connectionId;
+  /**
+   * RTC image if sourceType is VIDEO_SOURCE_RTC_IMAGE.
+   */
+  const char* imageUrl; 
+  /**
+   * The horizontal position of the top left corner of the video frame.
+   */
+  int x;
+  /**
+   * The vertical position of the top left corner of the video frame.
+   */
+  int y;
+  /**
+   * The width of the video frame.
+   */
+  int width;
+  /**
+   * The height of the video frame.
+   */
+  int height;
+  /**
+   * The layer of the video frame that ranges from 1 to 100:
+  * - 1: (Default) The lowest layer.
+  * - 100: The highest layer.
+  */
+  int zOrder;
+  /**
+   * The transparency of the video frame.
+   */
+  double alpha;
+  /**
+   * mirror of the source video frame (only valid for camera streams)
+   */
+  bool mirror;
+
+  TranscodingVideoStream()
+      : sourceType(VIDEO_SOURCE_CAMERA_PRIMARY),
+        remoteUserUid(0),
+        connectionId(DEFAULT_CONNECTION_ID),
+        imageUrl(NULL),
+        x(0),
+        y(0),
+        width(0),
+        height(0),
+        zOrder(0),
+        alpha(1.0),
+        mirror(false) {}
+};
+
+
+/**
+ * The definition of the LocalTranscodingConfiguration struct.
+ */
+struct LocalTranscoderConfiguration {
+  /**
+   * The number of VideoInputStreams in the transcoder.
+   */
+  unsigned int streamCount;
+  /**
+   * The video stream layout configuration in the transcoder.
+   */
+  TranscodingVideoStream* VideoInputStreams;
+  /**
+   * The video encoder configuration of transcoded video.
+   */
+  VideoEncoderConfiguration videoOutputConfiguration;
+
+  LocalTranscoderConfiguration()
+      : streamCount(0),
+        VideoInputStreams(NULL),
+        videoOutputConfiguration() {}
 };
 
 /**
@@ -3403,13 +3663,13 @@ struct VideoCanvas {
   VIDEO_SOURCE_TYPE sourceType;
 
   VideoCanvas() : view(NULL), renderMode(media::base::RENDER_MODE_HIDDEN), mirrorMode(VIDEO_MIRROR_MODE_AUTO),
-      uid(0), isScreenView(false), priv(NULL), priv_size(0), sourceType(VIDEO_SOURCE_CAMERA) {}
+      uid(0), isScreenView(false), priv(NULL), priv_size(0), sourceType(VIDEO_SOURCE_CAMERA_PRIMARY) {}
   VideoCanvas(view_t v, media::base::RENDER_MODE_TYPE m, VIDEO_MIRROR_MODE_TYPE mt, uid_t u)
       : view(v), renderMode(m), mirrorMode(mt), uid(u), isScreenView(false), priv(NULL), priv_size(0),
-        sourceType(VIDEO_SOURCE_CAMERA) {}
+        sourceType(VIDEO_SOURCE_CAMERA_PRIMARY) {}
   VideoCanvas(view_t v, media::base::RENDER_MODE_TYPE m, VIDEO_MIRROR_MODE_TYPE mt, user_id_t)
       : view(v), renderMode(m), mirrorMode(mt), uid(0), isScreenView(false), priv(NULL), priv_size(0),
-        sourceType(VIDEO_SOURCE_CAMERA) {}
+        sourceType(VIDEO_SOURCE_CAMERA_PRIMARY) {}
 };
 
 /**
@@ -3429,6 +3689,268 @@ struct VideoCanvas {
  * |         |--------------------|-----------------------------|              |                |
  * |         | 0x3: voice changer | 0x1: voice transform        |              |                |
  */
+/** The options for SDK preset voice beautifier effects.
+ */
+enum VOICE_BEAUTIFIER_PRESET {
+  /** Turn off voice beautifier effects and use the original voice.
+   */
+  VOICE_BEAUTIFIER_OFF = 0x00000000,
+  /** A more magnetic voice.
+   *
+   * @note Agora recommends using this enumerator to process a male-sounding voice; otherwise, you
+   * may experience vocal distortion.
+   */
+  CHAT_BEAUTIFIER_MAGNETIC = 0x01010100,
+  /** A fresher voice.
+   *
+   * @note Agora recommends using this enumerator to process a female-sounding voice; otherwise, you
+   * may experience vocal distortion.
+   */
+  CHAT_BEAUTIFIER_FRESH = 0x01010200,
+  /** A more vital voice.
+   *
+   * @note Agora recommends using this enumerator to process a female-sounding voice; otherwise, you
+   * may experience vocal distortion.
+   */
+  CHAT_BEAUTIFIER_VITALITY = 0x01010300,
+  /**
+   * @since v3.3.0
+   *
+   * Singing beautifier effect.
+   * - If you call \ref IRtcEngine::setVoiceBeautifierPreset "setVoiceBeautifierPreset"
+   * (SINGING_BEAUTIFIER), you can beautify a male-sounding voice and add a reverberation effect
+   * that sounds like singing in a small room. Agora recommends not using \ref
+   * IRtcEngine::setVoiceBeautifierPreset "setVoiceBeautifierPreset" (SINGING_BEAUTIFIER) to process
+   * a female-sounding voice; otherwise, you may experience vocal distortion.
+   * - If you call \ref IRtcEngine::setVoiceBeautifierParameters
+   * "setVoiceBeautifierParameters"(SINGING_BEAUTIFIER, param1, param2), you can beautify a male- or
+   * female-sounding voice and add a reverberation effect.
+   */
+  SINGING_BEAUTIFIER = 0x01020100,
+  /** A more vigorous voice.
+   */
+  TIMBRE_TRANSFORMATION_VIGOROUS = 0x01030100,
+  /** A deeper voice.
+   */
+  TIMBRE_TRANSFORMATION_DEEP = 0x01030200,
+  /** A mellower voice.
+   */
+  TIMBRE_TRANSFORMATION_MELLOW = 0x01030300,
+  /** A falsetto voice.
+   */
+  TIMBRE_TRANSFORMATION_FALSETTO = 0x01030400,
+  /** A fuller voice.
+   */
+  TIMBRE_TRANSFORMATION_FULL = 0x01030500,
+  /** A clearer voice.
+   */
+  TIMBRE_TRANSFORMATION_CLEAR = 0x01030600,
+  /** A more resounding voice.
+   */
+  TIMBRE_TRANSFORMATION_RESOUNDING = 0x01030700,
+  /** A more ringing voice.
+   */
+  TIMBRE_TRANSFORMATION_RINGING = 0x01030800
+};
+
+/** The options for SDK preset audio effects.
+ */
+enum AUDIO_EFFECT_PRESET {
+  /** Turn off audio effects and use the original voice.
+   */
+  AUDIO_EFFECT_OFF = 0x00000000,
+  /** An audio effect typical of a KTV venue.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_KTV = 0x02010100,
+  /** An audio effect typical of a concert hall.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_VOCAL_CONCERT = 0x02010200,
+  /** An audio effect typical of a recording studio.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_STUDIO = 0x02010300,
+  /** An audio effect typical of a vintage phonograph.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_PHONOGRAPH = 0x02010400,
+  /** A virtual stereo effect that renders monophonic audio as stereo audio.
+   *
+   * @note Call \ref IRtcEngine::setAudioProfile "setAudioProfile" and set the `profile` parameter
+   * to `AUDIO_PROFILE_MUSIC_STANDARD_STEREO(3)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)`
+   * before setting this enumerator; otherwise, the enumerator setting does not take effect.
+   */
+  ROOM_ACOUSTICS_VIRTUAL_STEREO = 0x02010500,
+  /** A more spatial audio effect.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_SPACIAL = 0x02010600,
+  /** A more ethereal audio effect.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  ROOM_ACOUSTICS_ETHEREAL = 0x02010700,
+  /** A 3D voice effect that makes the voice appear to be moving around the user. The default cycle
+   * period of the 3D voice effect is 10 seconds. To change the cycle period, call \ref
+   * IRtcEngine::setAudioEffectParameters "setAudioEffectParameters" after this method.
+   *
+   * @note
+   * - Call \ref IRtcEngine::setAudioProfile "setAudioProfile" and set the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_STANDARD_STEREO(3)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator; otherwise, the enumerator setting does not take effect.
+   * - If the 3D voice effect is enabled, users need to use stereo audio playback devices to hear
+   * the anticipated voice effect.
+   */
+  ROOM_ACOUSTICS_3D_VOICE = 0x02010800,
+  /** The voice of an uncle.
+   *
+   * @note
+   * - Agora recommends using this enumerator to process a male-sounding voice; otherwise, you may
+   * not hear the anticipated voice effect.
+   * - To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_UNCLE = 0x02020100,
+  /** The voice of an old man.
+   *
+   * @note
+   * - Agora recommends using this enumerator to process a male-sounding voice; otherwise, you may
+   * not hear the anticipated voice effect.
+   * - To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_OLDMAN = 0x02020200,
+  /** The voice of a boy.
+   *
+   * @note
+   * - Agora recommends using this enumerator to process a male-sounding voice; otherwise, you may
+   * not hear the anticipated voice effect.
+   * - To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_BOY = 0x02020300,
+  /** The voice of a young woman.
+   *
+   * @note
+   * - Agora recommends using this enumerator to process a female-sounding voice; otherwise, you may
+   * not hear the anticipated voice effect.
+   * - To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_SISTER = 0x02020400,
+  /** The voice of a girl.
+   *
+   * @note
+   * - Agora recommends using this enumerator to process a female-sounding voice; otherwise, you may
+   * not hear the anticipated voice effect.
+   * - To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_GIRL = 0x02020500,
+  /** The voice of Pig King, a character in Journey to the West who has a voice like a growling
+   * bear.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_PIGKING = 0x02020600,
+  /** The voice of Hulk.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  VOICE_CHANGER_EFFECT_HULK = 0x02020700,
+  /** An audio effect typical of R&B music.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  STYLE_TRANSFORMATION_RNB = 0x02030100,
+  /** An audio effect typical of popular music.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  STYLE_TRANSFORMATION_POPULAR = 0x02030200,
+  /** A pitch correction effect that corrects the user's pitch based on the pitch of the natural C
+   * major scale. To change the basic mode and tonic pitch, call \ref
+   * IRtcEngine::setAudioEffectParameters "setAudioEffectParameters" after this method.
+   *
+   * @note To achieve better audio effect quality, Agora recommends calling \ref
+   * IRtcEngine::setAudioProfile "setAudioProfile" and setting the `profile` parameter to
+   * `AUDIO_PROFILE_MUSIC_HIGH_QUALITY(4)` or `AUDIO_PROFILE_MUSIC_HIGH_QUALITY_STEREO(5)` before
+   * setting this enumerator.
+   */
+  PITCH_CORRECTION = 0x02040100
+
+  /** Todo:  Electronic sound, Magic tone haven't been implemented.
+   * 
+   */
+};
+
+/** The options for SDK preset voice conversion.
+ */
+enum VOICE_CONVERSION_PRESET {
+  /** Turn off voice conversion and use the original voice.
+   */
+  VOICE_CONVERSION_OFF = 0x00000000,
+  /** A neutral voice.
+   */
+  VOICE_CHANGER_NEUTRAL = 0x03010100,
+  /** A sweet voice.
+   */
+  VOICE_CHANGER_SWEET = 0x03010200,
+  /** A solid voice.
+   */
+  VOICE_CHANGER_SOLID = 0x03010300,
+  /** A bass voice.
+   */
+  VOICE_CHANGER_BASS = 0x03010400
+};
+
+// TODO(ZYH), it will be deleted after the new interfaces have been implemented to replace it.
 enum AUDIO_REVERB_PRESET {
   /**
    * 0: The original voice (no local voice reverberation).
@@ -3488,9 +4010,9 @@ struct ScreenCaptureParameters {
    */
   int bitrate;
   /** Sets whether or not to capture the mouse for screen sharing:
-   * - true: (Default) Capture the mouse.    
-   * - false: Do not capture the mouse.     
-   */
+  * - true: (Default) Capture the mouse.    
+  * - false: Do not capture the mouse.     
+  */
   bool captureMouseCursor;
   /** Whether to bring the window to the front when calling 
   * \ref IRtcEngine::startScreenCaptureByWindowId "startScreenCaptureByWindowId" to share the window:    
@@ -3506,24 +4028,19 @@ struct ScreenCaptureParameters {
    * The number of windows to be blocked.
    */
   int excludeWindowCount;
-
-  ScreenCaptureParameters() : dimensions(1920, 1080), frameRate(5), bitrate(STANDARD_BITRATE),
-      captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
+  
+  ScreenCaptureParameters()
+    : dimensions(1920, 1080), frameRate(5), bitrate(STANDARD_BITRATE), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
   ScreenCaptureParameters(const VideoDimensions& d, int f, int b)
-      : dimensions(d), frameRate(f), bitrate(b), 
-      captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(d), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b)
-      : dimensions(width, height), frameRate(f), bitrate(b),
-      captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}  
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b, bool cur, bool fcs)
-      : dimensions(width, height), frameRate(f), bitrate(b),
-      captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(nullptr), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b, view_t *ex, int cnt)
-      : dimensions(width, height), frameRate(f), bitrate(b),
-        captureMouseCursor(true), windowFocus(false), excludeWindowList(ex), excludeWindowCount(cnt) {}
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(ex), excludeWindowCount(cnt) {}
   ScreenCaptureParameters(int width, int height, int f, int b, bool cur, bool fcs, view_t *ex, int cnt)
-      : dimensions(width, height), frameRate(f), bitrate(b), 
-      captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(ex), excludeWindowCount(cnt) {}
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(ex), excludeWindowCount(cnt) {}
 };
 
 /**
@@ -3560,6 +4077,24 @@ enum AUDIO_FILE_RECORDING_TYPE {
    * 3: mixed audio file recording, include mic and playback.
    */
   AUDIO_FILE_RECORDING_MIXED = 3,
+};
+
+/**
+ * audio encoded frame observer position.
+ */
+enum AUDIO_ENCODED_FRAME_OBSERVER_POSITION {
+  /**
+  * 1: mic 
+  */
+  AUDIO_ENCODED_FRAME_OBSERVER_POSITION_RECORD = 1,
+  /**
+  * 2: playback audio file recording.
+  */
+  AUDIO_ENCODED_FRAME_OBSERVER_POSITION_PLAYBACK = 2,
+  /**
+  * 3: mixed audio file recording, include mic and playback.
+  */
+  AUDIO_ENCODED_FRAME_OBSERVER_POSITION_MIXED = 3,
 };
 
 /**
@@ -3624,38 +4159,23 @@ struct AudioFileRecordingConfig {
  * The Audio encoded frame receiver options.
  * 
  */
-struct AudioEncodedFrameReceiverConfig {
+struct AudioEncodedFrameObserverConfig {
+    /**
+     * The position where SDK record the audio, and callback to encoded audio frame receiver.
+     */
+    AUDIO_ENCODED_FRAME_OBSERVER_POSITION postionType;  
+    /**
+     * The audio encoding type of encoded frame.
+     */
+    AUDIO_ENCODING_TYPE encodingType;
 
-    int sampleRate;
-
-/**
- * The user you want to receive in OnPlaybackEncodedAudioReceived callback
- * 
- * useful only if postionType is AUDIO_FILE_RECORDING_PLAYBACK
- */
-    uid_t uid;  
-
-/**
- * The position where SDK record the audio, and callback to encoded audio frame receiver.
- */
-    AUDIO_FILE_RECORDING_TYPE postionType;  
-
-    AUDIO_RECORDING_QUALITY_TYPE quality;
-
-/**
- * codecType AAC or OPUS
- */
-    AUDIO_CODEC_TYPE codecType; 
-    AudioEncodedFrameReceiverConfig(AUDIO_CODEC_TYPE codec_type)
-    :sampleRate(48000),
-    uid(0),
-    postionType(AUDIO_FILE_RECORDING_PLAYBACK),
-    quality(AUDIO_RECORDING_QUALITY_MEDIUM),
-    codecType(codec_type) {}
+    AudioEncodedFrameObserverConfig()
+    : postionType(AUDIO_ENCODED_FRAME_OBSERVER_POSITION_PLAYBACK),
+      encodingType(AUDIO_ENCODING_TYPE_OPUS_48000_MEDIUM){}
 
 };
 
-class IAudioEncodedFrameReceiver {
+class IAudioEncodedFrameObserver {
 public:
 /**
 * Occurs each time the SDK receives an encoded recorded audio frame.
@@ -3664,7 +4184,7 @@ public:
 * @param audioEncodedFrameInfoThe information of the encoded audio frame: EncodedAudioFrameInfo.
 
 */
-virtual void OnRecordEncodedAudioReceived(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
+virtual void OnRecordAudioEncodedFrame(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
 
 /**
 * Occurs each time the SDK receives an encoded playback audio frame.
@@ -3673,7 +4193,7 @@ virtual void OnRecordEncodedAudioReceived(const uint8_t* frameBuffer,  int lengt
 * @param audioEncodedFrameInfoThe information of the encoded audio frame: EncodedAudioFrameInfo.
 
 */
-virtual void OnPlaybackEncodedAudioReceived(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
+virtual void OnPlaybackAudioEncodedFrame(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
 
 /**
 * Occurs each time the SDK receives an encoded mixed audio frame.
@@ -3682,18 +4202,9 @@ virtual void OnPlaybackEncodedAudioReceived(const uint8_t* frameBuffer,  int len
 * @param audioEncodedFrameInfoThe information of the encoded audio frame: EncodedAudioFrameInfo.
 
 */
-virtual void OnMixedEncodedAudioReceived(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
+virtual void OnMixedAudioEncodedFrame(const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
 
-/**
-* Occurs each time the SDK receives an encoded before-mixing playback audio frame.
-* @param frameBufferThe pointer to the audio frame buffer.
-* @param length The data length of the audio frame.
-* @param audioEncodedFrameInfoThe information of the encoded audio frame: EncodedAudioFrameInfo.
-
-*/
-virtual void OnPlaybackEncodedAudioReceivedBeforeMixing(uid_t uid, const uint8_t* frameBuffer,  int length, const EncodedAudioFrameInfo& audioEncodedFrameInfo) = 0;
-
-virtual ~IAudioEncodedFrameReceiver () {}
+virtual ~IAudioEncodedFrameObserver () {}
 };
 
 /**
@@ -3981,8 +4492,8 @@ struct ChannelMediaRelayConfiguration {
 	int destCount;
 
 	ChannelMediaRelayConfiguration()
-			: srcInfo(nullptr)
-			, destInfos(nullptr)
+			: srcInfo(NULL)
+			, destInfos(NULL)
 			, destCount(0)
 	{}
 };
@@ -4001,32 +4512,6 @@ struct UplinkNetworkInfo {
   bool operator==(const UplinkNetworkInfo& rhs) const {
     return (video_encoder_target_bitrate_bps == rhs.video_encoder_target_bitrate_bps);
   }
-};
-
-/**
- * The downscale level of the remote video stream . The higher the downscale level, the more the video downscales.
- */
-enum REMOTE_VIDEO_DOWNSCALE_LEVEL {
-  /**
-   * No downscale.
-   */
-  REMOTE_VIDEO_DOWNSCALE_LEVEL_NONE,
-  /**
-   * Downscale level 1.
-   */
-  REMOTE_VIDEO_DOWNSCALE_LEVEL_1,
-  /**
-   * Downscale level 2.
-   */
-  REMOTE_VIDEO_DOWNSCALE_LEVEL_2,
-  /**
-   * Downscale level 3.
-   */
-  REMOTE_VIDEO_DOWNSCALE_LEVEL_3,
-  /**
-   * Downscale level 4.
-   */
-  REMOTE_VIDEO_DOWNSCALE_LEVEL_4,
 };
 
 /**
@@ -4110,7 +4595,7 @@ struct DownlinkNetworkInfo {
       total_downscale_level_count(info.total_downscale_level_count),
       peer_downlink_info(nullptr),
       total_received_video_count(info.total_received_video_count) {
-    if (total_received_video_count == 0) return;
+    if (total_received_video_count <= 0) return;
     peer_downlink_info = new PeerDownlinkInfo[total_received_video_count];
     for (int i = 0; i < total_received_video_count; ++i)
       peer_downlink_info[i] = info.peer_downlink_info[i];
@@ -4139,18 +4624,15 @@ struct DownlinkNetworkInfo {
 /** Encryption mode.
 */
 enum ENCRYPTION_MODE {
-  /** 1: (Default) 128-bit AES encryption, XTS mode.
-   */
-  AES_128_XTS = 1,
-  /** 2: 128-bit AES encryption, ECB mode.
-   */
-  AES_128_ECB = 2,
-  /** 3: 256-bit AES encryption, XTS mode.
-   */
-  AES_256_XTS = 3,
   /** 4: 128-bit SM4 encryption, ECB mode.
    */
   SM4_128_ECB = 4,
+  /** 5: (Default) 128-bit AES encryption, GCM mode.
+   */
+  AES_128_GCM = 5,
+  /** 6: 256-bit AES encryption, GCM mode.
+   */
+  AES_256_GCM = 6,
   /** Enumerator boundary.
    */
   MODE_END,
@@ -4159,7 +4641,7 @@ enum ENCRYPTION_MODE {
 /** Configurations of the built-in encryption schemas. */
 struct EncryptionConfig {
   /**
-   * The encryption mode. The default encryption mode is `AES_128_XTS`. See #ENCRYPTION_MODE.
+   * The encryption mode. The default encryption mode is `AES_128_GCM`. See #ENCRYPTION_MODE.
    */
   ENCRYPTION_MODE encryptionMode;
   /**
@@ -4168,27 +4650,28 @@ struct EncryptionConfig {
    * @note If you do not set an encryption key or set it as NULL, you cannot use the built-in encryption, and the SDK returns #ERR_INVALID_ARGUMENT (-2).
    */
   const char* encryptionKey;
+  uint8_t encryptionKdfSalt[32];
 
-  EncryptionConfig() {
-    encryptionMode = AES_128_XTS;
-    encryptionKey = nullptr;
+  EncryptionConfig()
+    : encryptionMode(AES_128_GCM),
+      encryptionKey(NULL)
+  {
+    memset(encryptionKdfSalt, 0, sizeof(encryptionKdfSalt));
   }
 
   /// @cond
   const char* getEncryptionString() const {
     switch(encryptionMode) {
-      case AES_128_XTS:
-        return "aes-128-xts";
-      case AES_128_ECB:
-        return "aes-128-ecb";
-      case AES_256_XTS:
-        return "aes-256-xts";
       case SM4_128_ECB:
         return "sm4-128-ecb";
+      case AES_128_GCM:
+        return "aes-128-gcm";
+      case AES_256_GCM:
+        return "aes-256-gcm";
       default:
-        return "aes-128-xts";
+        return "aes-128-gcm";
     }
-    return "aes-128-xts";
+    return "aes-128-gcm";
   }
   /// @endcond
 };
@@ -4199,6 +4682,13 @@ enum ENCRYPTION_ERROR_TYPE {
     ENCRYPTION_ERROR_INTERNAL_FAILURE = 0,
     ENCRYPTION_ERROR_DECRYPTION_FAILURE = 1,
     ENCRYPTION_ERROR_ENCRYPTION_FAILURE = 2,
+};
+
+/** Type of permission.
+ */
+enum PERMISSION_TYPE {
+  RECORD_AUDIO = 0,
+  CAMERA = 1,
 };
 
 /** Maximum length of user account.
@@ -4246,6 +4736,24 @@ struct UserInfo {
       : uid(0) {
     userAccount[0] = '\0';
   }
+};
+
+/**
+ * Type of ear monitoring filter.
+ */
+enum EAR_MONITORING_FILTER_TYPE {
+  /**
+   * 1: Do not add an audio filter to the in-ear monitor.
+   */
+  EAR_MONITORING_FILTER_NONE = (1<<0),
+  /**
+   * 2: Enable audio filters to the in-ear monitor.
+   */
+  EAR_MONITORING_FILTER_BUILT_IN_AUDIO_FILTERS = (1<<1),
+  /**
+   * 4: Enable noise suppression to the in-ear monitor.
+   */
+  EAR_MONITORING_FILTER_NOISE_SUPPRESSION = (1<<2)
 };
 
 }  // namespace rtc

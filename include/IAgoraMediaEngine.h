@@ -205,7 +205,7 @@ class IMediaEngine {
   virtual void release() = 0;
 
  protected:
-  virtual ~IMediaEngine() = default;
+  virtual ~IMediaEngine() {}
 };
 
 }  // namespace media

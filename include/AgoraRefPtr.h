@@ -27,13 +27,13 @@ class RefCountInterface {
   // Non-public destructor, because Release() has exclusive responsibility for
   // destroying the object.
  protected:
-  virtual ~RefCountInterface() = default;
+  virtual ~RefCountInterface() {}
 };
 
 template <class T>
 class agora_refptr {
  public:
-  agora_refptr() : ptr_(nullptr) {}
+  agora_refptr() : ptr_(NULL) {}
 
   agora_refptr(T* p) : ptr_(p) {
     if (ptr_) ptr_->AddRef();
@@ -59,7 +59,7 @@ class agora_refptr {
   }
 
   T* get() const { return ptr_; }
-  operator bool() const { return (ptr_ != nullptr); }
+  operator bool() const { return (ptr_ != NULL); }
 
   T* operator->() const { return  ptr_; }
   T& operator*() const { return *ptr_; }
@@ -71,7 +71,7 @@ class agora_refptr {
   // calling Release() once on the object when no longer using it.
   T* move() {
     T* retVal = ptr_;
-    ptr_ = nullptr;
+    ptr_ = NULL;
     return retVal;
   }
 
@@ -116,7 +116,7 @@ class agora_refptr {
   void reset() {
     if (ptr_) {
       ptr_->Release();
-      ptr_ = nullptr;
+      ptr_ = NULL;
     }
   }
 

@@ -6,7 +6,8 @@
 
 #pragma once  // NOLINT(build/header_guard)
 
-#include <stdint.h>
+#include <cstring>
+#include <cstdint>
 
 /**
  * set analyze duration for real time stream
@@ -31,6 +32,12 @@
  * @example  "setPlayerOption(KEY_PLAYER_DISABLE_SEARCH_METADATA,0)"
  */
 #define KEY_PLAYER_ENABLE_SEARCH_METADATA         "enable_search_metadata"
+
+/**
+ * set the player sei filter type
+ * @example  "setPlayerOption(KEY_PLAYER_SEI_FILTER_TYPE,"5")"
+ */
+#define KEY_PLAYER_SEI_FILTER_TYPE         "set_sei_filter_type"
 
 namespace agora {
 
@@ -66,7 +73,7 @@ enum MEDIA_PLAYER_STATE {
   PLAYER_STATE_PLAYBACK_ALL_LOOPS_COMPLETED,
   /** The playback is stopped.
    */
-  PLAYER_STATE_STOPPED = PLAYER_STATE_IDLE,
+  PLAYER_STATE_STOPPED,
   /** Player pausing (internal)
    */
   PLAYER_STATE_PAUSING_INTERNAL = 50,
@@ -133,6 +140,9 @@ enum MEDIA_PLAYER_ERROR {
   /** The playback buffer is insufficient.
    */
   PLAYER_ERROR_SRC_BUFFER_UNDERFLOW = -12,
+  /** The audio mixing file playback is interrupted.
+   */
+  PLAYER_ERROR_INTERRUPTED = -13,
 };
 
 /**
@@ -202,13 +212,25 @@ enum MEDIA_PLAYER_EVENT {
   /** The player changes the audio track for playback.
    */
   PLAYER_EVENT_AUDIO_TRACK_CHANGED = 5,
+  /** player buffer low
+   */
+  PLAYER_EVENT_BUFFER_LOW = 6,
+    /** player buffer recover
+   */
+  PLAYER_EVENT_BUFFER_RECOVER = 7,
+  /** The video or audio is interrupted
+   */
+  PLAYER_EVENT_FREEZE_START = 8,
+  /** Interrupt at the end of the video or audio
+   */
+  PLAYER_EVENT_FREEZE_STOP = 9,
 };
 
 /**
  * @brief The information of the media stream object.
  *
  */
-struct PlayerStreamInfo { 
+struct PlayerStreamInfo {
   /** The index of the media stream. */
   int streamIndex;
 
@@ -247,6 +269,21 @@ struct PlayerStreamInfo {
 
   /** The total duration (second) of the media stream. */
   int64_t duration;
+
+  PlayerStreamInfo() : streamIndex(0),
+                       streamType(STREAM_TYPE_UNKNOWN),
+                       videoFrameRate(0),
+                       videoBitRate(0),
+                       videoWidth(0),
+                       videoHeight(0),
+                       videoRotation(0),
+                       audioSampleRate(0),
+                       audioChannels(0),
+                       audioBitsPerSample(0),
+                       duration(0) {
+    memset(codecName, 0, sizeof(codecName));
+    memset(language, 0, sizeof(language));
+  }
 };
 
 /**

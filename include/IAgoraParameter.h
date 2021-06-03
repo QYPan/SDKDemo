@@ -45,6 +45,11 @@
 #define KEY_RTC_VIDEO_ENABLED_HW_DECODER             "engine.video.enable_hw_decoder"
 
  /**
+  * set the hardware video encoder provider (nv for nvidia or qsv for intel)
+  */
+#define KEY_RTC_VIDEO_HW_ENCODER_PROVIDER            "engine.video.hw_encoder_provider"
+
+ /**
   * override the lua policy
   */
 #define KEY_RTC_VIDEO_OVERRIDE_SMALLVIDEO_NOT_USE_HWENC_POLICY  "engine.video.override_smallvideo_not_use_hwenc_policy"
@@ -78,6 +83,16 @@
   * enable/disable agora md logic, enabled by default
 */
 #define KEY_RTC_AUDIO_ENABLE_AGORA_MD                "rtc.audio.md.enable"
+
+/**
+  * set the OpenSL mode for Android audio
+*/
+#define KEY_RTC_AUDIO_OPENSL_MODE                    "rtc.audio.opensl.mode"
+
+/**
+  * set the adm input sample rate
+*/
+#define KEY_RTC_AUDIO_INPUT_SAMPLE_RATE              "rtc.audio.input_sample_rate"
 
 /**
   * set the bitrate ratio for video
@@ -118,6 +133,11 @@
   * set the network interface
 */
 #define KEY_RTC_NETWORK_INTERFACE                    "rtc.network.interface"
+
+/**
+ * set the video codec type, such as "H264", "JPEG"
+ */
+#define KEY_RTC_VIDEO_CODEC_TYPE                      "engine.video.codec_type"
 
 /**
   * only use average QP for quality scaling
