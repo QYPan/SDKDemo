@@ -56,6 +56,8 @@ public:
 	afx_msg void OnStnClickedStaticAudioDevice();
 	afx_msg void OnStnClickedStaticVideoDevice();
 	afx_msg void OnBnClickedCheckVideoObserver();
+	afx_msg void OnBnClickedEnumDisplay();
+	afx_msg void OnBnClickedEnumWin();
 
 	void initCtrls();
 	void initData();
@@ -79,6 +81,8 @@ private:
 	CButton m_btnMuteScreen;
 	CButton m_btnUpdateUsers;
 	CButton m_btnEnableVideoObserver;
+	CButton m_btnEnumWin;
+	CButton m_btnEnumDisplay;
 
 	CComboBox m_cmbUsers;
 	CComboBox m_cmbCameraList;
@@ -98,9 +102,4 @@ private:
 	SimpleWindow* m_screen_win = nullptr;
 
 	std::map<agora::rtc::uid_t, SimpleWindow*> m_users_win;
-public:
-	CButton m_btnEnumWin;
-	CButton m_btnEnumDisplay;
-	afx_msg void OnBnClickedEnumDisplay();
-	afx_msg void OnBnClickedEnumWin();
 };

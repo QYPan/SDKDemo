@@ -70,13 +70,13 @@ bool CAgoraManager::Init(const char* lpAppID) {
 		return false;
 	}
 
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_MEDIA_ENGINE,
+		reinterpret_cast<void**>(&media_engine_));
+
 	if(is_enable_video_observer_) {
 		if (!video_frame_observer_) {
 			video_frame_observer_ = new VideoFrameObserver();
 		}
-
-		rtc_engine_->queryInterface(agora::rtc::AGORA_IID_MEDIA_ENGINE,
-                          reinterpret_cast<void**>(&media_engine_));
 
 		if (media_engine_) {
 			media_engine_->registerVideoFrameObserver(video_frame_observer_);
@@ -780,6 +780,7 @@ void CAgoraManager::RestStates() {
 	is_joined_ = false;
 	is_publish_camera_ = false;
 	is_publish_screen_ = false;
+	is_publish_custom_ = false;
 	is_mute_camera_ = false;
 	is_mute_screen_ = false;
 	is_mute_mic_ = false;
@@ -793,6 +794,7 @@ void CAgoraManager::RestStates() {
 
 	camera_uid_ = 0;
 	screen_uid_ = 0;
+	custom_uid_ = 0;
 
 	param_ = ScreenCaptureParameters();
 	region_rect_ = agora::rtc::Rectangle();
@@ -805,7 +807,7 @@ bool CAgoraManager::StartSourceVideo()
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
-	op.publishCustomAudioTrack = true;
+	op.publishCustomAudioTrack = false;
 	op.publishCustomVideoTrack = true;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
 	printf("[I]: updateChannelMediaOptions(publish custom), ret: %d\n", ret);
@@ -846,9 +848,9 @@ bool CAgoraManager::PushVideoFrame(unsigned char * pData, int nW, int nH, long l
 
 	agora::media::base::ExternalVideoFrame frame;
 	frame.buffer = pData;
-	frame.format = agora::media::base::VIDEO_PIXEL_BGRA;
+	frame.format = agora::media::base::VIDEO_PIXEL_RGBA;
 	frame.height = nH;
-	frame.stride = nW * 4;
+	frame.stride = nW;
 	frame.timestamp = ms;
 	int ret = media_engine_->pushVideoFrame(&frame, custom_connId_);
 	return ret == 0 ? true : false;

@@ -46,7 +46,6 @@ std::string wide2ansi(const std::wstring& wide) {
   return result;
 }
 
-
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -277,6 +276,9 @@ void CSDKdemoDlg::initData()
 			m_cmbCameraList.InsertString(i, (LPCTSTR)(device_name_ansi));
 		}
 
+		if(m_cmbCameraList.GetCount() != 0)
+			m_cmbCameraList.SetCurSel(0);
+
 		std::vector<CAgoraManager::MicProg> mic_list;
 		m_agoraManager->GetMicList(mic_list);
 		for (int i = 0; i < mic_list.size(); i++) {
@@ -284,6 +286,9 @@ void CSDKdemoDlg::initData()
 			CString device_name_ansi(wide2ansi(utf82wide(mic_list[i].device_name_utf8)).c_str());
 			m_cmbMicList.InsertString(i, (LPCTSTR)(device_name_ansi));
 		}
+
+		if (m_cmbMicList.GetCount() != 0)
+			m_cmbMicList.SetCurSel(0);
 
 		done = true;
 	}
@@ -394,7 +399,7 @@ void CSDKdemoDlg::joinChannel()
 
 	uid_t screen_uid = rand() % 99999 + 1;
 
-	m_agoraManager->JoinChannel((const char*)CStringA(channelName), nullptr, 0, nullptr, screen_uid);
+	m_agoraManager->JoinChannel((const char*)CStringA(channelName), nullptr, 0, nullptr, screen_uid, nullptr, screen_uid + 1);
 }
 
 void CSDKdemoDlg::leaveChannel()
@@ -654,7 +659,40 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 
 void CSDKdemoDlg::OnBnClickedEnumDisplay()
 {
-	// TODO: 在此添加控件通知处理程序代码
+
+	std::thread th([this] {
+		const int VIDEO_WIDTH = 640;
+		const int VIDEO_HEIGHT = 360;
+		
+		if (!m_agoraManager->IsJoinChannel() || m_agoraManager->IsPushSourceVideo())
+			return;
+
+		const char* test_filepath = "d:\\broadcaster_uid_0_640_360_rgba.yuv";
+		FILE* file = fopen(test_filepath, "rb");
+		if (!file)
+			return;
+
+		uint64_t ms = 0;
+		int fps = 30;
+		int diff = 1000 / fps;
+		int FrameSize = VIDEO_WIDTH * VIDEO_HEIGHT * 4;
+		uint8_t* frameBuff = new uint8_t[FrameSize];
+
+		m_agoraManager->StartSourceVideo();
+		while (fread(frameBuff, FrameSize, 1, file)) {
+			bool ret = m_agoraManager->PushVideoFrame(frameBuff, VIDEO_WIDTH, VIDEO_HEIGHT, ms);
+			if (!ret) {
+				printf("[W]: PushVideoFrame ret: %d\n", ret);
+			}
+			ms += diff;
+			Sleep(diff);
+		}
+		m_agoraManager->StopPushSourceVideo();
+
+		fclose(file);
+	});
+	
+	th.detach();
 }
 
 
