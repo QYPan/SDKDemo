@@ -273,6 +273,10 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 
 	rtc_engine_->enableLocalVideo(true);
 
+	if (bWithMic) {
+		rtc_engine_->enableLocalAudio(true);
+	}
+
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
@@ -344,6 +348,11 @@ bool CAgoraManager::StartPushScreen(bool bWithMic) {
 	if (ret == 0) {
 		ChannelMediaOptions op;
 		op.publishScreenTrack = true;
+		op.publishAudioTrack = bWithMic;
+
+		if (bWithMic) {
+			rtc_engine_->enableLocalAudio(true);
+		}
 
 		ret1 = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
 		printf("[I]: updateChannelMediaOptions, ret: %d\n", ret1);
@@ -682,12 +691,23 @@ void CAgoraManager::GetMicList(std::vector<MicProg>& vMic) {
 
 void CAgoraManager::SetMicVolume(int nVol) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
-
-	// - 0: Mute the recording volume.
-    // - 100: The Original volume.
-    // - 400: (Maximum) Four times the original volume with signal clipping
 	int ret = rtc_engine_->adjustRecordingSignalVolume(nVol);
 	printf("[I]: adjustRecordingSignalVolume, ret: %d\n", ret);
+}
+
+void CAgoraManager::SetSystemMicVolume(int nVol) {
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
+	  reinterpret_cast<void**>(&adm));
+	if (!adm) {
+	  return;
+	}
+
+	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
+	int ret = audio_device_manager->setRecordingDeviceVolume(nVol);
+	printf("[I]: setRecordingDeviceVolume, ret: %d\n", ret);
 }
 
 void CAgoraManager::SetPushSystemAudio(int nMode) {

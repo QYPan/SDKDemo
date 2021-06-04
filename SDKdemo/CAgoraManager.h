@@ -115,7 +115,14 @@ public:
 	//麦克相关
 	void SetMic(int nID = -1);//-1为默认麦克风
 	void GetMicList(std::vector<MicProg>& vMic);//获得当前麦克风列表及属性
+
+	// - 0: Mute the recording volume.
+    // - 100: The Original volume.
+    // - 400: (Maximum) Four times the original volume with signal clipping
 	void SetMicVolume(int nVol);
+
+	// The value range is [0, 255].
+	void SetSystemMicVolume(int nVol);
 
 	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送),参考PushSystemAudioOption,该函数只能在加入频道之后调用,因为只有加入频道后才能拿到connection id
 	void SetPushSystemAudio(int nMode);
