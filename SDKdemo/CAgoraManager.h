@@ -149,6 +149,7 @@ public:
 	void OnUserJoined(uid_t uid, int elapsed, conn_id_t connId);
 	void OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId);
 	void onError(int err, const char* msg, conn_id_t connId);
+	void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId);
 
 private:
 	void RestStates();

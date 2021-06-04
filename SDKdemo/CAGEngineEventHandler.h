@@ -18,6 +18,7 @@ public:
 	virtual void onUserJoined(uid_t uid, int elapsed);
 	virtual void onUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason);
 	virtual void onError(int err, const char* msg);
+	virtual void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason);
 private:
 	conn_id_t conn_id_ = agora::rtc::DUMMY_CONNECTION_ID;
 	CAgoraManager* manager_ = nullptr;

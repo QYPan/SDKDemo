@@ -720,6 +720,10 @@ void CAgoraManager::onError(int err, const char* msg, conn_id_t connId) {
 	}
 }
 
+void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId) {
+	printf("[I]: onConnectionStateChanged, state: %d, reason: %d, connId: %d\n", state, reason, connId);
+}
+
 void CAgoraManager::RestStates() {
 	is_joined_ = false;
 	is_publish_camera_ = false;
