@@ -838,6 +838,8 @@ void CAgoraManager::ResetStates() {
 
 	share_win_ = 0;
 
+	current_recording_mode_ = 0;
+
 	camera_uid_ = 0;
 	screen_uid_ = 0;
 	custom_uid_ = 0;
