@@ -5,8 +5,6 @@
 #include <windows.h>
 #include <string>
 
-#include <AGORA.h>
-
 namespace app {
 namespace utils {
 

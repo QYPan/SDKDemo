@@ -807,7 +807,7 @@ bool CAgoraManager::StartSourceVideo()
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
-	op.publishCustomAudioTrack = false;
+	op.publishCustomAudioTrack = true;
 	op.publishCustomVideoTrack = true;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
 	printf("[I]: updateChannelMediaOptions(publish custom), ret: %d\n", ret);
@@ -862,10 +862,12 @@ bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nSize, long lSampl
 
 	agora::media::IAudioFrameObserver::AudioFrame frame;
 	frame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+	frame.avsync_type = 0;
 	frame.buffer = pData;
 	frame.channels = nChannel;
+	frame.bytesPerSample = 2 * nChannel;
 	frame.samplesPerSec = lSampleRate;
-	frame.bytesPerSample = 16;
+	frame.samplesPerChannel = lSampleRate / 100;
 	frame.renderTimeMs = ms;
 	
 	int ret = media_engine_->pushAudioFrame(agora::media::AUDIO_RECORDING_SOURCE, &frame, false, 0, custom_connId_);

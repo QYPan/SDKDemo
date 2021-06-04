@@ -26,6 +26,8 @@
 #define IDC_CHECK_VIDEO_OBSERVER        1015
 #define IDC_ENUM_WIN                    1016
 #define IDC_ENUM_DISPLAY                1017
+#define IDC_BUTTON1                     1018
+#define IDC_PUBLISH_CUSTOM              1018
 
 // Next default values for new objects
 // 
@@ -33,7 +35,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        132
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
