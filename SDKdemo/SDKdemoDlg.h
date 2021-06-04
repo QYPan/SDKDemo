@@ -56,12 +56,17 @@ public:
 	afx_msg void OnStnClickedStaticAudioDevice();
 	afx_msg void OnStnClickedStaticVideoDevice();
 	afx_msg void OnBnClickedCheckVideoObserver();
+	afx_msg void OnBnClickedEnumDisplay();
+	afx_msg void OnBnClickedEnumWin();
+	afx_msg void OnBnClickedPublishCustom();
 
 	void initCtrls();
 	void initData();
 	void joinChannel();
 	void leaveChannel();
 	void adjustVideoViews(bool local, bool remote);
+	void publishCustomMedia();
+	void unpublishCustomMedia();
 
 private:
 
@@ -79,6 +84,9 @@ private:
 	CButton m_btnMuteScreen;
 	CButton m_btnUpdateUsers;
 	CButton m_btnEnableVideoObserver;
+	CButton m_btnEnumWin;
+	CButton m_btnEnumDisplay;
+	CButton m_btnPublishCustom;
 
 	CComboBox m_cmbUsers;
 	CComboBox m_cmbCameraList;

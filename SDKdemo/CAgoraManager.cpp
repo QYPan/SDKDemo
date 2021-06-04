@@ -71,13 +71,13 @@ bool CAgoraManager::Init(const char* lpAppID) {
 		return false;
 	}
 
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_MEDIA_ENGINE,
+		reinterpret_cast<void**>(&media_engine_));
+
 	if(is_enable_video_observer_) {
 		if (!video_frame_observer_) {
 			video_frame_observer_ = new VideoFrameObserver();
 		}
-
-		rtc_engine_->queryInterface(agora::rtc::AGORA_IID_MEDIA_ENGINE,
-                          reinterpret_cast<void**>(&media_engine_));
 
 		if (media_engine_) {
 			media_engine_->registerVideoFrameObserver(video_frame_observer_);
@@ -108,6 +108,11 @@ void CAgoraManager::Release() {
 	if (screen_event_handler_) {
 		delete screen_event_handler_;
 		screen_event_handler_ = nullptr;
+	}
+
+	if (custom_event_handler_) {
+		delete custom_event_handler_;
+		custom_event_handler_ = nullptr;
 	}
 
 	if (is_enable_video_observer_ && video_frame_observer_) {
@@ -162,12 +167,34 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 
 		ret1 = rtc_engine_->joinChannelEx(lpSubToken, lpChannelId, uidSub, op, screen_event_handler_, &screen_connId_);
-		printf("[I]: joinChannelEx, ret: %d\n", ret1);
+		printf("[I]: joinChannelEx, ret1: %d\n", ret1);
 
 		screen_event_handler_->SetConnectionId(screen_connId_);	
 	}
 
-	return (ret || ret1) ? false : true;
+	if (!custom_event_handler_) {
+		custom_event_handler_ = new CAGEngineEventHandler(this);
+	}
+
+	int ret2 = 0;
+	if (uidSrc) {
+		custom_uid_ = uidSrc;
+
+		ChannelMediaOptions op;
+		op.publishAudioTrack = false;
+		op.publishCameraTrack = false;
+		op.publishScreenTrack = false;
+		op.autoSubscribeAudio = false;
+		op.autoSubscribeVideo = false;
+		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+
+		ret2 = rtc_engine_->joinChannelEx(lpSrcToken, lpChannelId, uidSrc, op, custom_event_handler_, &custom_connId_);
+		printf("[I]: joinChannelEx, ret2: %d\n", ret2);
+
+		custom_event_handler_->SetConnectionId(custom_connId_);
+	}
+
+	return (ret || ret1 || ret2) ? false : true;
 }
 
 bool CAgoraManager::LeaveChannel() {
@@ -380,7 +407,7 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 }
 
 void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
-	std::list<std::wstring> filters;
+	std::list<std::string> filters;
     auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters);
 	if (win_list.size()) {
 		vWindows.clear();
@@ -389,10 +416,8 @@ void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
     for (auto it = win_list.begin(); it != win_list.end(); it++) {
         for (auto item = it->second.begin(); item != it->second.end(); item++) {
 			WinProg prog;
-			prog.hwnd = item->hwnd;
-			prog.window_name = item->window_name;
-			prog.module_name = item->module_name;
-			prog.class_name = item->class_name;
+			prog.hwnd = item->sourceId;
+			prog.window_name_utf8 = item->sourceName;
 			vWindows.push_back(prog);
         }
     }
@@ -666,7 +691,7 @@ void CAgoraManager::SetMicVolume(int nVol) {
 }
 
 void CAgoraManager::SetPushSystemAudio(int nMode) {
-	if (nMode < 0 || nMode > 2) {
+	if (nMode < PushSystemAudioOption_None || nMode > PushSystemAudioOption_Screen) {
 		printf("[E]: invalid system audio mode, mode: %d\n", nMode);
 		return;
 	}
@@ -675,17 +700,21 @@ void CAgoraManager::SetPushSystemAudio(int nMode) {
 		return;
 	}
 
-	conn_id_t conn_id = agora::rtc::DUMMY_CONNECTION_ID;
-	if (nMode == 1) {
-		conn_id = camera_connId_;
-	} else if (nMode == 2) {
-		conn_id = screen_connId_;
+	if (current_recording_mode_ == PushSystemAudioOption_Camera) {
+		rtc_engine_->enableLoopbackRecording(camera_connId_, false);
+	}
+	else if (current_recording_mode_ == PushSystemAudioOption_Screen) {
+		rtc_engine_->enableLoopbackRecording(screen_connId_, false);
 	}
 
-	rtc_engine_->enableLoopbackRecording(false, current_recording_mode_);
-
-	if (nMode) {
-		rtc_engine_->enableLoopbackRecording(true, nMode);
+	if (PushSystemAudioOption_None != nMode) {
+		conn_id_t conn_id = agora::rtc::DUMMY_CONNECTION_ID;
+		if (nMode == PushSystemAudioOption_Camera) {
+			conn_id = camera_connId_;
+		}else if (nMode == PushSystemAudioOption_Screen) {
+			conn_id = screen_connId_;
+		}
+		rtc_engine_->enableLoopbackRecording(conn_id, true);
 	}
 
 	current_recording_mode_ = nMode;
@@ -797,6 +826,7 @@ void CAgoraManager::ResetStates() {
 	is_joined_ = false;
 	is_publish_camera_ = false;
 	is_publish_screen_ = false;
+	is_publish_custom_ = false;
 	is_mute_camera_ = false;
 	is_mute_screen_ = false;
 	is_mute_mic_ = false;
@@ -810,11 +840,84 @@ void CAgoraManager::ResetStates() {
 
 	camera_uid_ = 0;
 	screen_uid_ = 0;
+	custom_uid_ = 0;
 
 	param_ = ScreenCaptureParameters();
 	screen_rect_ = agora::rtc::Rectangle();
 	region_rect_ = agora::rtc::Rectangle();
 	exclude_window_list_.clear();
 	users_in_channel_.clear();
+}
+
+bool CAgoraManager::StartSourceVideo()
+{
+	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	ChannelMediaOptions op;
+	op.publishCustomAudioTrack = true;
+	op.publishCustomVideoTrack = true;
+	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
+	printf("[I]: updateChannelMediaOptions(publish custom), ret: %d\n", ret);
+
+	if (ret == 0) {
+		is_publish_custom_ = true;
+	}
+
+	ret = rtc_engine_->startPreview();
+	return ret == 0 ? true : false;
+}
+
+bool CAgoraManager::StopPushSourceVideo()
+{
+	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	ChannelMediaOptions op;
+	op.publishCustomAudioTrack = false;
+	op.publishCustomVideoTrack = false;
+	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
+	printf("[I]: updateChannelMediaOptions(unpublish custom), ret: %d\n", ret);
+
+	if (ret == 0) {
+		is_publish_custom_ = false;
+	}
+
+	return ret ? false : true;
+}
+
+bool CAgoraManager::IsPushSourceVideo()
+{
+	return is_publish_custom_;
+}
+
+bool CAgoraManager::PushVideoFrame(unsigned char * pData, int nW, int nH, long long ms)
+{
+	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	agora::media::base::ExternalVideoFrame frame;
+	frame.buffer = pData;
+	frame.format = agora::media::base::VIDEO_PIXEL_RGBA;
+	frame.height = nH;
+	frame.stride = nW;
+	frame.timestamp = ms;
+	int ret = media_engine_->pushVideoFrame(&frame, custom_connId_);
+	return ret == 0 ? true : false;
+}
+
+bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nSize, long lSampleRate, int nChannel, long long ms)
+{
+	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	agora::media::IAudioFrameObserver::AudioFrame frame;
+	frame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
+	frame.avsync_type = 0;
+	frame.buffer = pData;
+	frame.channels = nChannel;
+	frame.bytesPerSample = BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
+	frame.samplesPerSec = lSampleRate;
+	frame.samplesPerChannel = lSampleRate / 100;
+	frame.renderTimeMs = ms;
+	
+	int ret = media_engine_->pushAudioFrame(agora::media::AUDIO_RECORDING_SOURCE, &frame, false, 0, custom_connId_);
+	return ret == 0 ? true : false;
 }
 

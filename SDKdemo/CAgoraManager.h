@@ -21,22 +21,29 @@ public:
 		std::string device_id;
 		std::string device_name_utf8;
 	};
+
 	struct CameraProg {
 		int idx = -1;
 		std::string device_id;
 		std::string device_name_utf8;
 	};
+
 	struct WinProg {
 		HWND hwnd;
-		std::wstring window_name;
-		std::wstring class_name;
-		std::wstring module_name;
+		std::string window_name_utf8;
 	};
+
 	struct DesktopProg {
 		std::wstring name;
 		RECT rc;
 		bool is_primary;
 		int index;
+	};
+
+	enum PushSystemAudioOption {
+		PushSystemAudioOption_None = 0,
+		PushSystemAudioOption_Camera,
+		PushSystemAudioOption_Screen,
 	};
 public:
 	//首次调用需写入AppID
@@ -110,7 +117,7 @@ public:
 	void GetMicList(std::vector<MicProg>& vMic);//获得当前麦克风列表及属性
 	void SetMicVolume(int nVol);
 
-	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送)
+	//设置推送系统模式(0.不推送1.与摄像头推送2.与屏幕流推送),参考PushSystemAudioOption,该函数只能在加入频道之后调用,因为只有加入频道后才能拿到connection id
 	void SetPushSystemAudio(int nMode);
 
 
@@ -171,6 +178,7 @@ private:
 	agora::media::IMediaEngine* media_engine_ = nullptr;
 	CAGEngineEventHandler* camera_event_handler_ = nullptr;
 	CAGEngineEventHandler* screen_event_handler_ = nullptr;
+	CAGEngineEventHandler* custom_event_handler_ = nullptr;
 	VideoFrameObserver* video_frame_observer_ = nullptr;
 
 	agora::rtc::Rectangle screen_rect_;
@@ -190,19 +198,24 @@ private:
 	bool is_preview_ = false;
 	bool is_enable_video_observer_ = false;
 
+	bool is_publish_custom_ = false;
+
 	int push_screen_width_ = 0;
 	int push_screen_height_ = 0;
 
 	uid_t camera_uid_ = 0;
 	uid_t screen_uid_ = 0;
+	uid_t custom_uid_ = 0;
 
 	HWND share_win_ = 0;
 
 	agora::view_t camera_view_ = nullptr;
 	agora::view_t screen_view_ = nullptr;
+	agora::view_t custom_view_ = nullptr;
 
 	conn_id_t camera_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 	conn_id_t screen_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
+	conn_id_t custom_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 
 	int current_recording_mode_ = 0;
 

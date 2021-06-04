@@ -12,6 +12,7 @@
 
 #include "CAgoraManager.h"
 #include "SimpleWindow.h"
+#include "WinEnumerImpl.h"
 
 #include <fstream>
 #include <time.h>
@@ -45,7 +46,6 @@ std::string wide2ansi(const std::wstring& wide) {
   return result;
 }
 
-
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -60,10 +60,6 @@ public:
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
-
-// 实现
-protected:
-	DECLARE_MESSAGE_MAP()
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -74,10 +70,6 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 }
-
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-END_MESSAGE_MAP()
-
 
 // CSDKdemoDlg 对话框
 
@@ -110,6 +102,9 @@ void CSDKdemoDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_AUDIO_DEVICE, m_textAudioDeviceList);
 	DDX_Control(pDX, IDC_STATIC_VIDEO_DEVICE, m_textVideoDeviceList);
 	DDX_Control(pDX, IDC_CHECK_VIDEO_OBSERVER, m_btnEnableVideoObserver);
+	DDX_Control(pDX, IDC_ENUM_WIN, m_btnEnumWin);
+	DDX_Control(pDX, IDC_ENUM_DISPLAY, m_btnEnumDisplay);
+	DDX_Control(pDX, IDC_PUBLISH_CUSTOM, m_btnPublishCustom);
 }
 
 BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
@@ -132,6 +127,9 @@ BEGIN_MESSAGE_MAP(CSDKdemoDlg, CDialogEx)
 	ON_STN_CLICKED(IDC_STATIC_AUDIO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticAudioDevice)
 	ON_STN_CLICKED(IDC_STATIC_VIDEO_DEVICE, &CSDKdemoDlg::OnStnClickedStaticVideoDevice)
 	ON_BN_CLICKED(IDC_CHECK_VIDEO_OBSERVER, &CSDKdemoDlg::OnBnClickedCheckVideoObserver)
+	ON_BN_CLICKED(IDC_ENUM_DISPLAY, &CSDKdemoDlg::OnBnClickedEnumDisplay)
+	ON_BN_CLICKED(IDC_ENUM_WIN, &CSDKdemoDlg::OnBnClickedEnumWin)
+	ON_BN_CLICKED(IDC_PUBLISH_CUSTOM, &CSDKdemoDlg::OnBnClickedPublishCustom)
 END_MESSAGE_MAP()
 
 
@@ -233,6 +231,16 @@ void CSDKdemoDlg::initCtrls()
 
 	m_cmbUsers.MoveWindow(base_left + col_space, base_top + row_space, base_width, base_height, TRUE);
 
+
+	m_btnEnumWin.SetWindowText(_T("Enum Win"));
+	m_btnEnumWin.MoveWindow(base_left + col_space, base_top + row_space * 2, base_width, base_height, TRUE);
+
+	m_btnEnumDisplay.SetWindowText(_T("Enum Display"));
+	m_btnEnumDisplay.MoveWindow(base_left + col_space, base_top + row_space * 3, base_width, base_height, TRUE);
+
+	m_btnPublishCustom.SetWindowText(_T("Publish Custom"));
+	m_btnPublishCustom.MoveWindow(base_left + col_space, base_top + row_space * 4, base_width, base_height, TRUE);
+
 	m_textVideoDeviceList.SetWindowText(_T("Video Device:"));
 	m_textVideoDeviceList.MoveWindow(base_left, base_top + row_space * 13, 120, base_height, TRUE);
 	m_cmbCameraList.MoveWindow(base_left + 120, base_top + row_space * 13, base_width * 2, base_height, TRUE);
@@ -240,6 +248,8 @@ void CSDKdemoDlg::initCtrls()
 	m_textAudioDeviceList.SetWindowText(_T("Audio Device:"));
 	m_textAudioDeviceList.MoveWindow(base_left, base_top + row_space * 14, 120, base_height, TRUE);
 	m_cmbMicList.MoveWindow(base_left + 120, base_top + row_space * 14, base_width * 2, base_height, TRUE);
+
+	
 
 	//m_btnPreviewCamera.SetWindowText(_T("Preview Camera"));
 	//m_btnPreviewCamera.MoveWindow(rc.Width() / 2 + 80, rc.Height() - 200, 120, 40, TRUE);
@@ -273,6 +283,9 @@ void CSDKdemoDlg::initData()
 			m_cmbCameraList.InsertString(i, (LPCTSTR)(device_name_ansi));
 		}
 
+		if(m_cmbCameraList.GetCount() != 0)
+			m_cmbCameraList.SetCurSel(0);
+
 		std::vector<CAgoraManager::MicProg> mic_list;
 		m_agoraManager->GetMicList(mic_list);
 		for (int i = 0; i < mic_list.size(); i++) {
@@ -280,6 +293,9 @@ void CSDKdemoDlg::initData()
 			CString device_name_ansi(wide2ansi(utf82wide(mic_list[i].device_name_utf8)).c_str());
 			m_cmbMicList.InsertString(i, (LPCTSTR)(device_name_ansi));
 		}
+
+		if (m_cmbMicList.GetCount() != 0)
+			m_cmbMicList.SetCurSel(0);
 
 		done = true;
 	}
@@ -390,7 +406,7 @@ void CSDKdemoDlg::joinChannel()
 
 	uid_t screen_uid = rand() % 99999 + 1;
 
-	m_agoraManager->JoinChannel((const char*)CStringA(channelName), nullptr, 0, nullptr, screen_uid);
+	m_agoraManager->JoinChannel((const char*)CStringA(channelName), nullptr, 0, nullptr, screen_uid, nullptr, screen_uid + 1);
 }
 
 void CSDKdemoDlg::leaveChannel()
@@ -646,4 +662,118 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 {
 	bool enable = m_btnEnableVideoObserver.GetCheck();
 	m_agoraManager->EnableVideoFrameObserver(enable);
+}
+
+void CSDKdemoDlg::OnBnClickedEnumDisplay()
+{
+	
+}
+
+
+void CSDKdemoDlg::OnBnClickedEnumWin()
+{
+	std::list<std::string> vecFilters;
+	app::utils::WindowEnumer::EnumAllWindows(vecFilters);
+}
+
+
+void CSDKdemoDlg::OnBnClickedPublishCustom()
+{
+	if (!m_agoraManager->IsPushSourceVideo()) {
+		publishCustomMedia();
+		m_btnPublishCustom.SetWindowText(_T("Unpublish Custom"));
+	}
+	else {
+		unpublishCustomMedia();
+		m_btnPublishCustom.SetWindowText(_T("Publish Custom"));
+	}
+	
+}
+
+void CSDKdemoDlg::publishCustomMedia()
+{
+	if (!m_agoraManager->IsJoinChannel() || m_agoraManager->IsPushSourceVideo())
+		return;
+
+	m_agoraManager->StartSourceVideo();
+
+	std::thread th([this] {
+		const int VIDEO_WIDTH = 640;
+		const int VIDEO_HEIGHT = 360;
+
+		const char* test_filepath = "d:\\broadcaster_uid_0_640_360_rgba.yuv";
+		FILE* file = fopen(test_filepath, "rb");
+		if (!file)
+			return;
+
+		uint64_t ms = 0;
+		int fps = 30;
+		int diff = 1000 / fps;
+		int FrameSize = VIDEO_WIDTH * VIDEO_HEIGHT * 4;
+		uint8_t* frameBuff = new uint8_t[FrameSize];
+
+		while (m_agoraManager->IsPushSourceVideo()) {
+			size_t readBytes = fread(frameBuff, FrameSize, 1, file);
+			if (readBytes == 0) {
+				fseek(file, 0, SEEK_SET);
+				readBytes = fread(frameBuff, FrameSize, 1, file);
+				if (readBytes == 0)
+					break;
+			}
+
+			bool ret = m_agoraManager->PushVideoFrame(frameBuff, VIDEO_WIDTH, VIDEO_HEIGHT, ms);
+			if (!ret) {
+				printf("[W]: PushVideoFrame ret: %d\n", ret);
+			}
+			//ms += diff;
+			Sleep(diff);
+		}
+
+		if (m_agoraManager->IsPushSourceVideo())
+			m_agoraManager->StopPushSourceVideo();
+
+		delete[] frameBuff;
+		fclose(file);
+	});
+
+	th.detach();
+
+	std::thread th2([this] {
+		const int VIDEO_WIDTH = 640;
+		const int VIDEO_HEIGHT = 360;
+
+		const char* test_filepath = "d:\\far_in.pcm";
+		FILE* file = fopen(test_filepath, "rb");
+		if (!file)
+			return;
+
+		uint64_t ms = 0;
+		int sampleRate = 48000;
+		int channelNum = 2;
+		int frameDuration = 10;
+		int FrameSize = sampleRate * frameDuration / 1000 * channelNum * 2;
+		uint8_t* frameBuff = new uint8_t[FrameSize];
+
+		while (m_agoraManager->IsPushSourceVideo() && fread(frameBuff, FrameSize, 1, file)) {
+			bool ret = m_agoraManager->PushAudioFrame(frameBuff, FrameSize, sampleRate, channelNum, 0);
+			if (!ret) {
+				printf("[W]: PushVideoFrame ret: %d\n", ret);
+			}
+			Sleep(frameDuration - 1);
+		}
+
+		if (m_agoraManager->IsPushSourceVideo())
+			m_agoraManager->StopPushSourceVideo();
+
+		delete[] frameBuff;
+		fclose(file);
+	});
+
+	th2.detach();
+}
+
+void CSDKdemoDlg::unpublishCustomMedia()
+{
+	if(m_agoraManager->IsPushSourceVideo())
+		m_agoraManager->StopPushSourceVideo();
 }
