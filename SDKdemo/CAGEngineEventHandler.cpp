@@ -48,6 +48,6 @@ void CAGEngineEventHandler::onError(int err, const char* msg) {
 
 void CAGEngineEventHandler::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason) {
 	if (manager_) {
-		manager_->OnUserOffline(uid, reason, conn_id_);
+		manager_->onConnectionStateChanged(state, reason, conn_id_);
 	}
 }

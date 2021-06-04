@@ -26,6 +26,18 @@ public:
 		std::string device_id;
 		std::string device_name_utf8;
 	};
+	struct WinProg {
+		HWND hwnd;
+		std::wstring window_name;
+		std::wstring class_name;
+		std::wstring module_name;
+	};
+	struct DesktopProg {
+		std::wstring name;
+		RECT rc;
+		bool is_primary;
+		int index;
+	};
 public:
 	//首次调用需写入AppID
 	static CAgoraManager* Inst();
@@ -54,12 +66,12 @@ public:
 	//设置采集窗口(是否可以在推中设置)
 	void SetPushWindow(HWND hwnd = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	//void GetWindowList(std::vector<WinProg>& vWindows);//获得当前可采集窗口列表及属性
+	void GetWindowList(std::vector<WinProg>& vWindows);//获得当前可采集窗口列表及属性
 	//设置采集桌面(是否可以在推中设置)
 	void SetPushFilter(HWND* pFilterHwndList = nullptr, int nFilterNum = 0);
 	void SetPushDesktop(int nScreenID = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	//void GetDesktopList(std::vector<DesktopProg>& vDesktop);//获得当前可采集桌面列表及属性
+	void GetDesktopList(std::vector<DesktopProg>& vDesktop);//获得当前可采集桌面列表及属性
 	//获得当前采集窗口/桌面尺寸
 	void GetWindowDesktopSize(int& nRetW, int& nRetH);
 	//设置采集图像显示窗口(0为取消指定窗口)
@@ -152,7 +164,7 @@ public:
 	void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId);
 
 private:
-	void RestStates();
+	void ResetStates();
 
 	static CAgoraManager* instance_;
 	IRtcEngine* rtc_engine_ = nullptr;
@@ -161,6 +173,7 @@ private:
 	CAGEngineEventHandler* screen_event_handler_ = nullptr;
 	VideoFrameObserver* video_frame_observer_ = nullptr;
 
+	agora::rtc::Rectangle screen_rect_;
 	agora::rtc::Rectangle region_rect_;
 
 	std::set<uid_t> users_in_channel_;

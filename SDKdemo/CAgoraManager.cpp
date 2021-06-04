@@ -2,6 +2,7 @@
 #include "CAgoraManager.h"
 #include "VideoFrameObserver.h"
 #include "CAGEngineEventHandler.h"
+#include "WinEnumerImpl.h"
 
 #define RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED() \
   if (!initialized_) {                           \
@@ -115,7 +116,7 @@ void CAgoraManager::Release() {
 		video_frame_observer_ = nullptr;
 	}
 
-	RestStates();
+	ResetStates();
 
 	initialized_ = false;
 }
@@ -179,7 +180,7 @@ bool CAgoraManager::LeaveChannel() {
 		video_frame_observer_->uninit();
 	}
 
-	RestStates();
+	ResetStates();
 
 	return ret ? false : true;
 }
@@ -238,6 +239,11 @@ void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFram
 bool CAgoraManager::StartPushCamera(bool bWithMic) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
+	if (IsPushCamera()) {
+		printf("[I]: StartPushCamera, already push camera\n");
+		return true;
+	}
+
 	rtc_engine_->enableLocalVideo(true);
 
 	ChannelMediaOptions op;
@@ -257,6 +263,11 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 
 bool CAgoraManager::StopPushCamera() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	if (!IsPushCamera()) {
+		printf("[I]: StopPushCamera, already stop camera\n");
+		return true;
+	}
 
 	int ret = rtc_engine_->enableLocalVideo(false);
 	if (ret == 0) {
@@ -283,6 +294,11 @@ void CAgoraManager::UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFram
 bool CAgoraManager::StartPushScreen(bool bWithMic) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
+	if (IsPushScreen()) {
+		printf("[I]: StartPushScreen, already start screen share\n");
+		return true;
+	}
+
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
 	param_.frameRate = 15;
@@ -294,7 +310,7 @@ bool CAgoraManager::StartPushScreen(bool bWithMic) {
 		ret = rtc_engine_->startScreenCaptureByWindowId((agora::view_t)share_win_, region_rect_, param_);
 		printf("[I]: startScreenCaptureByWindowId, ret: %d\n", ret);
 	} else {
-		ret = rtc_engine_->startScreenCaptureByScreenRect(agora::rtc::Rectangle(), region_rect_, param_);
+		ret = rtc_engine_->startScreenCaptureByScreenRect(screen_rect_, region_rect_, param_);
 		printf("[I]: startScreenCaptureByScreenRect, ret: %d\n", ret);
 	}
 
@@ -316,6 +332,19 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 		int x, int y, int w, int h) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
+	std::vector<DesktopProg> desktops;
+	GetDesktopList(desktops);
+	if (nScreenID < 0 || nScreenID >= desktops.size()) {
+		printf("[E]: SetPushDesktop, desktop_size: %d, screen_id: %d\n", desktops.size(), nScreenID);
+		return;
+	}
+
+	auto desktop = desktops[nScreenID];
+	screen_rect_.x = desktop.rc.left;
+	screen_rect_.y = desktop.rc.top;
+	screen_rect_.width = desktop.rc.right - desktop.rc.left;
+	screen_rect_.height = desktop.rc.bottom - desktop.rc.top;
+
 	region_rect_.x = x;
 	region_rect_.y = y;
 	region_rect_.width = w;
@@ -328,6 +357,11 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 
 bool CAgoraManager::StopPushScreen() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
+
+	if (!IsPushScreen()) {
+		printf("[I]: StopPushScreen, already stop screen share\n");
+		return true;
+	}
 
 	int ret = rtc_engine_->stopScreenCapture();
 	printf("[I]: stopScreenCapture, ret: %d\n", ret);
@@ -343,6 +377,41 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.y = y;
 	region_rect_.width = w;
 	region_rect_.height = h;
+}
+
+void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
+	std::list<std::wstring> filters;
+    auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters);
+	if (win_list.size()) {
+		vWindows.clear();
+	}
+
+    for (auto it = win_list.begin(); it != win_list.end(); it++) {
+        for (auto item = it->second.begin(); item != it->second.end(); item++) {
+			WinProg prog;
+			prog.hwnd = item->hwnd;
+			prog.window_name = item->window_name;
+			prog.module_name = item->module_name;
+			prog.class_name = item->class_name;
+			vWindows.push_back(prog);
+        }
+    }
+}
+
+void CAgoraManager::GetDesktopList(std::vector<DesktopProg>& vDesktop) {
+	std::list<app::utils::WindowEnumer::MONITOR_INFO> desktops = app::utils::WindowEnumer::EnumAllMonitors();
+	if (desktops.size()) {
+		vDesktop.clear();
+	}
+
+	for (auto it = desktops.begin(); it != desktops.end(); it++) {
+		DesktopProg prog;
+		prog.index = it->index;
+		prog.is_primary = it->is_primary;
+		prog.name = it->name;
+		prog.rc = it->rc;
+		vDesktop.push_back(prog);
+	}
 }
 
 void CAgoraManager::SetPushFilter(HWND* pFilterHwndList, int nFilterNum) {
@@ -724,7 +793,7 @@ void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNEC
 	printf("[I]: onConnectionStateChanged, state: %d, reason: %d, connId: %d\n", state, reason, connId);
 }
 
-void CAgoraManager::RestStates() {
+void CAgoraManager::ResetStates() {
 	is_joined_ = false;
 	is_publish_camera_ = false;
 	is_publish_screen_ = false;
@@ -743,6 +812,7 @@ void CAgoraManager::RestStates() {
 	screen_uid_ = 0;
 
 	param_ = ScreenCaptureParameters();
+	screen_rect_ = agora::rtc::Rectangle();
 	region_rect_ = agora::rtc::Rectangle();
 	exclude_window_list_.clear();
 	users_in_channel_.clear();
