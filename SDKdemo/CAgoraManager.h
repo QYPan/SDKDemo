@@ -28,16 +28,42 @@ public:
 		std::string device_name_utf8;
 	};
 
-	struct WinProg {
-		HWND hwnd;
-		std::string window_name_utf8;
+	struct AgoraImageBuffer
+	{
+		const char * buffer;     ///< 图内容
+		uint32_t length;         ///< 图缓存大小
+		uint32_t width;          ///< 图宽
+		uint32_t height;         ///< 图高
+		AgoraImageBuffer()
+			: buffer(nullptr)
+			, length(0)
+			, width(0)
+			, height(0)
+		{};
 	};
 
-	struct DesktopProg {
-		std::wstring name;
-		RECT rc;
-		bool is_primary;
-		int index;
+	struct WinProg {
+		HWND sourceId;
+		std::string    sourceName;///< 窗口标题名称，UTF8 编码
+		bool           isMinimizeWindow;///< 是否为最小化窗口
+		int    x; //窗口位置x
+		int    y; //窗口位置y
+		int    width;//窗口宽度
+		int    height;//窗口高度
+		AgoraImageBuffer iconBGRA;           ///< 图标内容
+		AgoraImageBuffer thumbBGRA;          ///< 缩略图内容
+	};
+
+	struct DesktopProg
+	{
+		int sourceId;
+		std::string   sourceName;///< 采集源名称，UTF8 编码
+		int    x; //全局虚拟桌面位置x
+		int    y; //全局虚拟桌面位置y
+		int    width;//选定桌面宽度
+		int    height;//选定桌面窗口高度
+		AgoraImageBuffer thumbBGRA;       ///< 缩略图内容
+		bool            isMainScreen;    ///< 是否为主屏
 	};
 
 	enum PushSystemAudioOption {

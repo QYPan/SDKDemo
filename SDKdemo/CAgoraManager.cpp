@@ -376,10 +376,10 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 	}
 
 	auto desktop = desktops[nScreenID];
-	screen_rect_.x = desktop.rc.left;
-	screen_rect_.y = desktop.rc.top;
-	screen_rect_.width = desktop.rc.right - desktop.rc.left;
-	screen_rect_.height = desktop.rc.bottom - desktop.rc.top;
+	screen_rect_.x = desktop.x;
+	screen_rect_.y = desktop.y;
+	screen_rect_.width = desktop.width;
+	screen_rect_.height = desktop.height;
 
 	region_rect_.x = x;
 	region_rect_.y = y;
@@ -425,8 +425,8 @@ void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
     for (auto it = win_list.begin(); it != win_list.end(); it++) {
         for (auto item = it->second.begin(); item != it->second.end(); item++) {
 			WinProg prog;
-			prog.hwnd = item->sourceId;
-			prog.window_name_utf8 = item->sourceName;
+			prog.sourceId = item->sourceId;
+			prog.sourceName = item->sourceName;
 			vWindows.push_back(prog);
         }
     }
@@ -440,10 +440,12 @@ void CAgoraManager::GetDesktopList(std::vector<DesktopProg>& vDesktop) {
 
 	for (auto it = desktops.begin(); it != desktops.end(); it++) {
 		DesktopProg prog;
-		prog.index = it->index;
-		prog.is_primary = it->is_primary;
-		prog.name = it->name;
-		prog.rc = it->rc;
+		prog.sourceId = it->index;
+		prog.isMainScreen = it->is_primary;
+		prog.x = it->rc.left;
+		prog.y = it->rc.top;
+		prog.width = it->rc.right - it->rc.left;
+		prog.height = it->rc.bottom - it->rc.top;
 		vDesktop.push_back(prog);
 	}
 }
