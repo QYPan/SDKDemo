@@ -13,10 +13,13 @@
 #include "CAgoraManager.h"
 #include "SimpleWindow.h"
 #include "WinEnumerImpl.h"
+#include "process.h"
 
 #include <fstream>
 #include <time.h>
 #include <string>
+#include <sstream>
+#include <gdiplus.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -169,6 +172,9 @@ BOOL CSDKdemoDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+
+	Gdiplus::GdiplusStartupInput startupInput;
+	Gdiplus::GdiplusStartup(&m_gdiplusToken, &startupInput, nullptr);
 
 	initCtrls();
 	initData();
@@ -454,6 +460,8 @@ void CSDKdemoDlg::OnBnClickedButtonQuit()
 	m_localView.DestroyWindow();
 	m_remoteView.DestroyWindow();
 
+	Gdiplus::GdiplusShutdown(m_gdiplusToken);
+
 	CAgoraManager::Destroy();
 	CDialogEx::OnCancel();
 }
@@ -670,8 +678,30 @@ void CSDKdemoDlg::OnBnClickedEnumDisplay()
 
 void CSDKdemoDlg::OnBnClickedEnumWin()
 {
+	using namespace app::utils;
+	using ListWindowsInfo = std::list<WindowEnumer::WINDOW_INFO>;
+	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
+
+
+	static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
+
 	std::list<std::string> vecFilters;
-	app::utils::WindowEnumer::EnumAllWindows(vecFilters);
+	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters);
+	MapWindowInfo::iterator it = mapWindows.begin();
+	for (; it != mapWindows.end(); it++) {
+		ListWindowsInfo listInfo = it->second;
+		ListWindowsInfo::iterator it2 = listInfo.begin();
+		for (; it2 != listInfo.end(); it2++) {
+			WindowEnumer::WINDOW_INFO& info = (*it2);
+			std::stringstream ss;
+			ss << "[" << it->first << "] hwnd: 0x" << std::hex << info.sourceId << ", hIcon: 0x" << info.hIcon << ", windows name: " << info.sourceName << "\n";
+			OutputDebugStringA(ss.str().c_str());
+
+			int maxWidth = 600, maxHeight = 600;
+			DrawThumbToWindow(pImageWnd->GetView(), info.sourceId, maxWidth, maxHeight);
+			Sleep(2000);
+		}
+	}
 }
 
 

@@ -94,6 +94,7 @@ private:
 
 	CStatic m_textVideoDeviceList;
 	CStatic m_textAudioDeviceList;
+	ULONG_PTR m_gdiplusToken = 0;
 
 	IRtcEngine* m_lpRtcEngine;
 	int m_width = 0;

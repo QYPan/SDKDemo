@@ -11,8 +11,6 @@
 
 namespace app {
 namespace utils {
-namespace process {
-
 
 /*
 * Get icon of specified process by path and convert HICCON to HBITMAP
@@ -59,9 +57,9 @@ bool CopyToClipBoard(const astring& data);
 
 BYTE* GetBitmapRGBAData(HDC dc, HBITMAP hBitmap, int &outLength);
 
-bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd);
-	
-}
+bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeight);
+
+void GetPictureFromHWND(HWND hWnd);
 
 }
 }
