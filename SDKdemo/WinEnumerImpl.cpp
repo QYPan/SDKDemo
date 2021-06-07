@@ -10,6 +10,10 @@
 #include <atlbase.h>
 #include <atlstr.h>
 
+#include "process.h"
+
+using namespace app::utils;
+
 namespace app {
 namespace utils {
 
@@ -148,7 +152,7 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.isMinimizeWindow = ::IsIconic(hwnd);
 
 	int thumbWidth = 0, thumbHeight = 0;
-	//info.hBitmap = GetProcessIconBitmap(module_name, &thumbWidth, &thumbHeight);
+	info.hIcon = GetProcessIconBitmap(module_name, &thumbWidth, &thumbHeight);
     
     auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
     auto itr = windows->find(info.moduleName);

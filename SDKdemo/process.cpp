@@ -15,7 +15,6 @@
 
 namespace app {
 namespace utils {
-namespace process {
 
 int GetEncoderClsid(const TCHAR* format, CLSID* pClsid)
 {
@@ -66,8 +65,11 @@ HBITMAP ConvertHicon2HBitmap(HICON hIcon, int* width, int* height)
     }
     else {
       pWrapBitmap = Gdiplus::Bitmap::FromHBITMAP(icInfo.hbmColor, NULL);
-      if (!pWrapBitmap)
-        break;
+	  if (!pWrapBitmap) {
+		  DWORD dwError = GetLastError();
+		  break;
+	  }
+        
       Gdiplus::BitmapData bitmapData;
       Gdiplus::Rect rcImage(0, 0, pWrapBitmap->GetWidth(), pWrapBitmap->GetHeight());
       pWrapBitmap->LockBits(&rcImage, Gdiplus::ImageLockModeRead, pWrapBitmap->GetPixelFormat(), &bitmapData);
@@ -271,7 +273,7 @@ BYTE * GetBitmapRGBAData(HDC dc, HBITMAP hBitmap, int & outLength)
 	return bits;
 }
 
-bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd)
+bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeight)
 {
 	if (!::IsWindow(hDestWnd))
 		return false;
@@ -283,22 +285,35 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd)
 	if (!thumbNail)
 		return false;
 
-	DWM_THUMBNAIL_PROPERTIES prop = { 0 };
-	prop.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_RECTSOURCE | DWM_TNP_VISIBLE;
-	prop.fVisible = TRUE;
-
 	SIZE size{ 0 };
 	::DwmQueryThumbnailSourceSize(thumbNail, &size);
 
 	int sw = size.cx;
 	int sh = size.cy;
-	::SetWindowPos(hDestWnd, NULL, 0, 0, sw, sh, SWP_NOMOVE | SWP_NOACTIVATE);
+	
+	int destWidth = sw;
+	int destHeight = sh;
+	if (destWidth > maxWidth) {
+		destWidth = maxWidth;
+		destHeight = 1.0 * destWidth * sh / sw;
+	}
 
-	RECT rcSrc = {0, 0, sw, sh};
-	RECT rcDest = rcSrc;
+	if (destHeight > maxHeight) {
+		destHeight = maxHeight;
+		destWidth = 1.0 * destHeight * sw / sh;
+	}
+
+	RECT rcDest = { 0 };
+	rcDest.right = destWidth;
+	rcDest.bottom = destHeight;
+
+	DWM_THUMBNAIL_PROPERTIES prop = { 0 };
+	prop.dwFlags = DWM_TNP_RECTDESTINATION | DWM_TNP_RECTSOURCE | DWM_TNP_VISIBLE;
+	prop.fVisible = TRUE;
 	prop.rcDestination = rcDest;
-	prop.rcSource = rcSrc;
+	prop.rcSource = { 0, 0, sw, sh };
 
+	::SetWindowPos(hDestWnd, NULL, 0, 0, destWidth, destHeight, SWP_NOMOVE | SWP_NOACTIVATE);
 	HRESULT hr = ::DwmUpdateThumbnailProperties(thumbNail, &prop);
 	if (FAILED(hr))
 		return false;
@@ -306,7 +321,28 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd)
 	return true;
 }
 
+void GetPictureFromHWND(HWND hWnd)
+{
+	RECT rcTarget;
+	::GetClientRect(hWnd, &rcTarget);
+	int width = rcTarget.right - rcTarget.left;
+	int height = rcTarget.bottom - rcTarget.top;
+
+	HDC hDC = ::GetDC(hWnd);
+	HDC hCompatibleDC = ::CreateCompatibleDC(hDC);
+	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, width, height);
+
+	SelectObject(hCompatibleDC, hCompatibleBitmap);
+	::BitBlt(hCompatibleDC, 0, 0, width, height, hDC, 0, 0, SRCCOPY);
+
+	Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromHBITMAP(hCompatibleBitmap, NULL);
+	
+
+	::DeleteObject(hCompatibleBitmap);
+	::DeleteDC(hCompatibleDC);
+	::ReleaseDC(hWnd, hDC);
 }
+
 }
 }
 
