@@ -427,6 +427,22 @@ void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
 			WinProg prog;
 			prog.sourceId = item->sourceId;
 			prog.sourceName = item->sourceName;
+			prog.isMinimizeWindow = item->isMinimizeWindow;
+			
+			prog.x = item->x;
+			prog.y = item->y;
+			prog.width = item->width;
+			prog.height = item->height;
+			
+			prog.iconBGRA.buffer = (const char*)&item->icon.data[0];
+			prog.iconBGRA.length = item->icon.data.size();
+			prog.iconBGRA.width = item->icon.width;
+			prog.iconBGRA.height = item->icon.height;
+
+			prog.thumbBGRA.buffer = (const char*)&item->thumb.data[0];
+			prog.thumbBGRA.length = item->thumb.data.size();
+			prog.thumbBGRA.width = item->thumb.width;
+			prog.thumbBGRA.height = item->thumb.height;
 			vWindows.push_back(prog);
         }
     }
@@ -446,6 +462,10 @@ void CAgoraManager::GetDesktopList(std::vector<DesktopProg>& vDesktop) {
 		prog.y = it->rc.top;
 		prog.width = it->rc.right - it->rc.left;
 		prog.height = it->rc.bottom - it->rc.top;
+		prog.thumbBGRA.buffer = (const char*)&it->thumb.data[0];
+		prog.thumbBGRA.length = it->thumb.data.size();
+		prog.thumbBGRA.width = it->thumb.width;
+		prog.thumbBGRA.height = it->thumb.height;
 		vDesktop.push_back(prog);
 	}
 }

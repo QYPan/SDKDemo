@@ -257,20 +257,20 @@ bool CopyToClipBoard(const astring& data)
   return ret;
 }
 
-BYTE * GetBitmapRGBAData(HDC dc, HBITMAP hBitmap, int & outLength)
+bool GetBitmapRGBAData(HDC hDC, HBITMAP hBitmap, std::vector<BYTE>& imagedata)
 {
-	BITMAPINFO bmpInfo;
-	ZeroMemory(&bmpInfo, sizeof(BITMAPINFO));
-	bmpInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-	GetDIBits(dc, hBitmap, 0, 0, NULL, &bmpInfo, DIB_RGB_COLORS);
-	if (!bmpInfo.bmiHeader.biSizeImage)
-		return NULL;
+	struct { BITMAPINFO info; RGBQUAD moreColors[255]; } fbi = { 0 };
+	BITMAPINFOHEADER &bi = fbi.info.bmiHeader;
+	bi.biSize = sizeof(BITMAPINFOHEADER);
 
-	outLength = bmpInfo.bmiHeader.biSizeImage;
-	BYTE* bits = new BYTE[outLength];
-	GetBitmapBits(hBitmap, outLength, bits);
+	GetDIBits(hDC, hBitmap, 0, 0, NULL, &fbi.info, DIB_RGB_COLORS);
+	if (!bi.biSizeImage)
+		return false;
 
-	return bits;
+	imagedata.resize(bi.biSizeImage);
+	int ret = GetDIBits(hDC, hBitmap, 0, fbi.info.bmiHeader.biHeight, &imagedata[0], (BITMAPINFO*)&fbi.info, DIB_RGB_COLORS);
+
+	return ret != 0 ? true : false;
 }
 
 bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeight)
@@ -318,29 +318,86 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 	if (FAILED(hr))
 		return false;
 
+	int imgWidth, imgHeight;
+	std::vector<BYTE> vData;
+	GetPictureFromHWND(hDestWnd, imgWidth, imgHeight, vData);
+
 	return true;
 }
 
-void GetPictureFromHWND(HWND hWnd)
+bool  GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>& imagedata)
 {
 	RECT rcTarget;
 	::GetClientRect(hWnd, &rcTarget);
-	int width = rcTarget.right - rcTarget.left;
-	int height = rcTarget.bottom - rcTarget.top;
+	nWidth = rcTarget.right - rcTarget.left;
+	nHeight = rcTarget.bottom - rcTarget.top;
 
 	HDC hDC = ::GetDC(hWnd);
 	HDC hCompatibleDC = ::CreateCompatibleDC(hDC);
-	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, width, height);
+	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, nWidth, nHeight);
 
-	SelectObject(hCompatibleDC, hCompatibleBitmap);
-	::BitBlt(hCompatibleDC, 0, 0, width, height, hDC, 0, 0, SRCCOPY);
+	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
+	::BitBlt(hCompatibleDC, 0, 0, nWidth, nHeight, hDC, 0, 0, SRCCOPY);
 
-	Gdiplus::Bitmap* pBitmap = Gdiplus::Bitmap::FromHBITMAP(hCompatibleBitmap, NULL);
+	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
 	
-
+	SelectObject(hCompatibleDC, hOldBitmap);
 	::DeleteObject(hCompatibleBitmap);
-	::DeleteDC(hCompatibleDC);
+	::DeleteObject(hCompatibleDC);
 	::ReleaseDC(hWnd, hDC);
+
+	return ret;
+}
+
+bool GetDesktopAREAData(RECT & rcArea, int & outWidth, int & outHeight, std::vector<BYTE>& imagedata)
+{
+	outWidth = rcArea.right - rcArea.left;
+	outHeight = rcArea.bottom - rcArea.top;
+
+	HDC hDC = ::GetDC(NULL);
+	HDC hCompatibleDC = ::CreateCompatibleDC(hDC);
+	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, outWidth, outHeight);
+	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
+	::StretchBlt(hCompatibleDC, 0, 0, outWidth, outHeight, hDC, rcArea.left, rcArea.top, outWidth, outHeight, SRCCOPY);
+
+	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
+
+	/*TCHAR* filename = _T("test.bmp");
+	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
+
+	SelectObject(hCompatibleDC, hOldBitmap);
+	::DeleteObject(hCompatibleBitmap);
+	::DeleteObject(hCompatibleDC);
+	::ReleaseDC(NULL, hDC);
+	
+	return ret;
+}
+
+void SaveToDisk(const TCHAR * filename, HBITMAP hBitmap, std::vector<BYTE>& imagedata)
+{
+	BITMAP bm;
+	GetObject(hBitmap, sizeof(bm), &bm);
+
+	BITMAPINFOHEADER bi = { 0 };
+	bi.biSize = sizeof(BITMAPINFOHEADER);
+	bi.biWidth = bm.bmWidth;
+	bi.biHeight = bm.bmHeight;
+	bi.biPlanes = bm.bmPlanes;
+	bi.biBitCount = bm.bmBitsPixel;
+	bi.biCompression = BI_RGB;
+	bi.biSizeImage = bm.bmHeight * bm.bmWidthBytes;
+
+	BITMAPFILEHEADER bfh = { 0 };
+	bfh.bfType = ((WORD)('M' << 8) | 'B');
+	bfh.bfSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bi.biSizeImage;
+	bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+	HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+	DWORD dwWrite;
+	WriteFile(hFile, &bfh, sizeof(BITMAPFILEHEADER), &dwWrite, NULL);
+	WriteFile(hFile, &bi, sizeof(BITMAPINFOHEADER), &dwWrite, NULL);
+	WriteFile(hFile, &imagedata[0], bi.biSizeImage, &dwWrite, NULL);
+	CloseHandle(hFile);
 }
 
 }

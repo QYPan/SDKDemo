@@ -40,6 +40,7 @@ BOOL WINAPI MonitorEnumCallback(HMONITOR monitor,
   info.name = info_ex.szDevice;
   info.is_primary = info_ex.dwFlags & MONITORINFOF_PRIMARY;
 
+  GetDesktopAREAData(info.rc, info.thumb.width, info.thumb.height, info.thumb.data);
 
   monitors->emplace_back(info);
 
@@ -151,9 +152,13 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.moduleName = CT2A(module_name);
 	info.isMinimizeWindow = ::IsIconic(hwnd);
 
-	int thumbWidth = 0, thumbHeight = 0;
-	info.hIcon = GetProcessIconBitmap(module_name, &thumbWidth, &thumbHeight);
-    
+
+	// 获取进程图标
+	HDC hDC = ::GetDC(hwnd);
+	HBITMAP hBitmap = GetProcessIconBitmap(module_name, &info.icon.width, &info.icon.height);
+	GetBitmapRGBAData(hDC, hBitmap, info.icon.data);
+	::ReleaseDC(hwnd, hDC);
+
     auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
     auto itr = windows->find(info.moduleName);
     if (itr == std::end(*windows)) {

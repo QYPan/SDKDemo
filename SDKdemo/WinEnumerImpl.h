@@ -4,6 +4,7 @@
 #include <map>
 #include <windows.h>
 #include <string>
+#include <vector>
 
 namespace app {
 namespace utils {
@@ -11,12 +12,21 @@ namespace utils {
 class WindowEnumer {
 public:
 
+	typedef struct {
+		int width;
+		int height;
+		std::vector<BYTE> data;
+	}IMAGE_INFO;
+
   typedef struct {
     std::wstring name;
     RECT rc;
     bool is_primary;
     int index;
+	IMAGE_INFO thumb;
   }MONITOR_INFO;
+
+  
 
   typedef struct {
 	  HWND sourceId;
@@ -27,8 +37,8 @@ public:
 	  int    y; //窗口位置y
 	  int    width;//窗口宽度
 	  int    height;//窗口高度
-	  HBITMAP hBitmap;
-	  HBITMAP hIcon;
+	  IMAGE_INFO thumb;
+	  IMAGE_INFO icon;
   }WINDOW_INFO;
 
   static std::list<MONITOR_INFO> EnumAllMonitors();

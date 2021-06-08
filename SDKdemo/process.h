@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <string>
+#include <vector>
 
 #ifdef UNICODE
 #define astring std::wstring
@@ -55,11 +56,15 @@ void TerminateProcess(const astring& file_name, bool once = false);
 */
 bool CopyToClipBoard(const astring& data);
 
-BYTE* GetBitmapRGBAData(HDC dc, HBITMAP hBitmap, int &outLength);
+bool GetBitmapRGBAData(HDC hDC, HBITMAP hBitmap, std::vector<BYTE>& imagedata);
 
 bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeight);
 
-void GetPictureFromHWND(HWND hWnd);
+bool GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>& imagedata);
+
+bool GetDesktopAREAData(RECT& rcArea,int& outWidth, int& outHeight, std::vector<BYTE>& imagedata);
+
+void SaveToDisk(const TCHAR* filename, HBITMAP hBitmap, std::vector<BYTE>& imagedata);
 
 }
 }

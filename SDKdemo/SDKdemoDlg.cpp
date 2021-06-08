@@ -674,7 +674,8 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 
 void CSDKdemoDlg::OnBnClickedEnumDisplay()
 {
-	
+	std::vector<CAgoraManager::DesktopProg> vDesktop;
+	m_agoraManager->GetDesktopList(vDesktop);
 }
 
 
@@ -685,25 +686,30 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
 
 
-	static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
+	SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
+	::SetWindowPos(pImageWnd->GetView(), NULL, -2000, -2000, 0, 0, SWP_NOACTIVATE);
 
 	std::list<std::string> vecFilters;
 	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters);
 	MapWindowInfo::iterator it = mapWindows.begin();
 	for (; it != mapWindows.end(); it++) {
-		ListWindowsInfo listInfo = it->second;
+		ListWindowsInfo& listInfo = it->second;
 		ListWindowsInfo::iterator it2 = listInfo.begin();
 		for (; it2 != listInfo.end(); it2++) {
 			WindowEnumer::WINDOW_INFO& info = (*it2);
 			std::stringstream ss;
-			ss << "[" << it->first << "] hwnd: 0x" << std::hex << info.sourceId << ", hIcon: 0x" << info.hIcon << ", windows name: " << info.sourceName << "\n";
+			ss << "[" << it->first << "] hwnd: 0x" << std::hex << info.sourceId << ", windows name: " << info.sourceName << "\n";
 			OutputDebugStringA(ss.str().c_str());
 
 			int maxWidth = 600, maxHeight = 600;
-			DrawThumbToWindow(pImageWnd->GetView(), info.sourceId, maxWidth, maxHeight);
-			Sleep(2000);
+			if (DrawThumbToWindow(pImageWnd->GetView(), info.sourceId, maxWidth, maxHeight)) {
+				GetPictureFromHWND(pImageWnd->GetView(), info.thumb.width, info.thumb.height, info.thumb.data);
+			}
+			//Sleep(2000);
 		}
 	}
+
+	delete pImageWnd;
 }
 
 
