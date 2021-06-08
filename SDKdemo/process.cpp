@@ -318,10 +318,6 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 	if (FAILED(hr))
 		return false;
 
-	int imgWidth, imgHeight;
-	std::vector<BYTE> vData;
-	GetPictureFromHWND(hDestWnd, imgWidth, imgHeight, vData);
-
 	return true;
 }
 
@@ -338,8 +334,12 @@ bool  GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>
 
 	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
 	::BitBlt(hCompatibleDC, 0, 0, nWidth, nHeight, hDC, 0, 0, SRCCOPY);
+	//PrintWindow(hWnd, hCompatibleDC, 0);
 
 	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
+
+	/*TCHAR* filename = _T("test.bmp");
+	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
 	
 	SelectObject(hCompatibleDC, hOldBitmap);
 	::DeleteObject(hCompatibleBitmap);
