@@ -51,24 +51,16 @@ void VideoFrameObserver::uninit() {
 
 VideoFrameObserver::~VideoFrameObserver() { uninit(); }
 
-int VideoFrameObserver::getPlayerImageW(agora::rtc::uid_t uid) {
+bool VideoFrameObserver::GetPlayerImageSize(agora::rtc::uid_t uid, int& nRetW, int& nRetH) {
   std::lock_guard<std::mutex> lck(m_mt);
   auto it = m_renderVideoFrameCache.find(uid);
   if (it != m_renderVideoFrameCache.end()) {
-    return it->second.width;
+    nRetW = it->second.width;
+    nRetH = it->second.height;
+    return true;
   }
 
-  return 0;
-}
-
-int VideoFrameObserver::getPlayerImageH(agora::rtc::uid_t uid) {
-  std::lock_guard<std::mutex> lck(m_mt);
-  auto it = m_renderVideoFrameCache.find(uid);
-  if (it != m_renderVideoFrameCache.end()) {
-    return it->second.height;
-  }
-
-  return 0;
+  return false;
 }
 
 bool VideoFrameObserver::getPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int& nRetW, int& nRetH) {
@@ -93,14 +85,15 @@ bool VideoFrameObserver::getPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int&
   return true;
 }
 
-int VideoFrameObserver::getCameraImageW() {
+bool VideoFrameObserver::GetCameraImageSize(int& nRetW, int& nRetH) {
   std::lock_guard<std::mutex> lck(m_mt);
-  return m_currentCameraVideoFrame.width;
-}
+  if (m_currentCameraVideoFrame.width && m_currentCameraVideoFrame.height) {
+    nRetW = m_currentCameraVideoFrame.width;
+    nRetH = m_currentCameraVideoFrame.height;
+    return true;
+  }
 
-int VideoFrameObserver::getCameraImageH() {
-  std::lock_guard<std::mutex> lck(m_mt);
-  return m_currentCameraVideoFrame.height;
+  return false;
 }
 
 bool VideoFrameObserver::getCameraImage(BYTE* pData, int& nRetW, int& nRetH) {
@@ -123,15 +116,16 @@ bool VideoFrameObserver::getCameraImage(BYTE* pData, int& nRetW, int& nRetH) {
 
   return true;
 }
-	
-int VideoFrameObserver::getScreenImageW() {
-  std::lock_guard<std::mutex> lck(m_mt);
-  return m_currentScreenVideoFrame.width;
-}
 
-int VideoFrameObserver::getScreenImageH() {
+bool VideoFrameObserver::GetScreenImageSize(int& nRetW, int& nRetH) {
   std::lock_guard<std::mutex> lck(m_mt);
-  return m_currentScreenVideoFrame.height;
+  if (m_currentScreenVideoFrame.width && m_currentScreenVideoFrame.height) {
+    nRetW = m_currentScreenVideoFrame.width;
+    nRetH = m_currentScreenVideoFrame.height;
+    return true;
+  }
+
+  return false;
 }
 
 bool VideoFrameObserver::getScreenImage(BYTE* pData, int& nRetW, int& nRetH) {

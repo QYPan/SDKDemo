@@ -16,16 +16,13 @@ class VideoFrameObserver : public agora::media::IVideoFrameObserver {
   bool init();
   void uninit();
 
-  int getPlayerImageW(agora::rtc::uid_t uid);
-  int getPlayerImageH(agora::rtc::uid_t uid);
+  bool GetPlayerImageSize(agora::rtc::uid_t uid, int& nRetW, int& nRetH);
   bool getPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int& nRetW, int& nRetH);
 
-  int getCameraImageW();
-  int getCameraImageH();
+  bool GetCameraImageSize(int& nRetW, int& nRetH);
   bool getCameraImage(BYTE* pData, int& nRetW, int& nRetH);
 	
-  int getScreenImageW();
-  int getScreenImageH();
+  bool GetScreenImageSize(int& nRetW, int& nRetH);
   bool getScreenImage(BYTE* pData, int& nRetW, int& nRetH);
 
  protected:
