@@ -11,6 +11,8 @@
 #include <atlstr.h>
 
 #include "process.h"
+#include "SimpleWindow.h"
+#include "MagnificationCapture.h"
 
 using namespace app::utils;
 
@@ -32,33 +34,65 @@ BOOL WINAPI MonitorEnumCallback(HMONITOR monitor,
   if (info_ex.dwFlags == DISPLAY_DEVICE_MIRRORING_DRIVER)
     return true;
 
-  auto monitors = ((std::list<WindowEnumer::MONITOR_INFO>*)data);
+  WindowEnumer::WIN_MONITORS* winMonitors = (WindowEnumer::WIN_MONITORS*)data;
+  auto monitors = winMonitors->monitors;
 
   WindowEnumer::MONITOR_INFO info;
-  info.index = monitors->size();
+  info.index = monitors.size();
   info.rc = info_ex.rcMonitor;
   info.name = info_ex.szDevice;
   info.is_primary = info_ex.dwFlags & MONITORINFOF_PRIMARY;
 
-  GetDesktopAREAData(info.rc, info.thumb.width, info.thumb.height, info.thumb.data);
+  if (winMonitors->renderType == WindowEnumer::RENDER_TYPE_FILL) {
+	  info.thumb.width = winMonitors->fillWidth;
+	  info.thumb.height = winMonitors->fillHeight;
+	  GetDesktopAREAData(info.rc, info.thumb.data,
+		  winMonitors->fillWidth, winMonitors->fillHeight);
+  }
+  else {
+	  int realWidth = info.rc.right - info.rc.left;
+	  int realHeight = info.rc.bottom - info.rc.top;
 
-  monitors->emplace_back(info);
+	  int outWidth = realWidth;
+	  int outHeight = realHeight;
+
+	  if (outWidth > winMonitors->maxWidth) {
+		  outWidth = winMonitors->maxWidth;
+		  outHeight = 1.0 * outWidth * realHeight / realWidth;
+	  }
+
+	  if (outHeight > winMonitors->maxHeight) {
+		  outHeight = winMonitors->maxHeight;
+		  outWidth = 1.0 * outHeight * realWidth / realHeight;
+	  }
+
+	  info.thumb.width = outWidth;
+	  info.thumb.height = outHeight;
+	  GetDesktopAREAData(info.rc,info.thumb.data, outWidth, outHeight);
+  }
+
+  monitors.emplace_back(info);
 
   return true;
 }
 
-std::list<WindowEnumer::MONITOR_INFO> WindowEnumer::EnumAllMonitors()
+std::list<WindowEnumer::MONITOR_INFO> WindowEnumer::EnumAllMonitors(int fillWidth, int fillHeight)
 {
-  std::list<WindowEnumer::MONITOR_INFO> monitors;
+  WIN_MONITORS winMonitors;
+  winMonitors.renderType = WindowEnumer::RENDER_TYPE_FILL;
+  winMonitors.fillWidth = fillWidth;
+  winMonitors.fillHeight = fillHeight;
 
-  ::EnumDisplayMonitors(NULL, NULL, MonitorEnumCallback, (LPARAM)&monitors);
+  ::EnumDisplayMonitors(NULL, NULL, MonitorEnumCallback, (LPARAM)&winMonitors);
 
-  return monitors;
+  return winMonitors.monitors;
 }
 
 WindowEnumer::MONITOR_INFO WindowEnumer::GetMonitorInfoByIndex(int index)
 {
-  auto monitors = EnumAllMonitors();
+	const int FILL_WIDTH = 600;
+	const int FILL_HEIGHT = 400;
+  auto monitors = EnumAllMonitors(FILL_WIDTH, FILL_HEIGHT);
   for (auto monitor : monitors) {
     if (monitor.index == index)
       return monitor;
@@ -158,6 +192,14 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	HBITMAP hBitmap = GetProcessIconBitmap(module_name, &info.icon.width, &info.icon.height);
 	GetBitmapRGBAData(hDC, hBitmap, info.icon.data);
 	::ReleaseDC(hwnd, hDC);
+
+	// ªÒ»°Àı¬‘Õº
+	static MagnificationCapture magCapture;
+	RECT wndRect;
+	GetWindowRect(hwnd, &wndRect);
+	magCapture.CaptureFrame(hwnd, wndRect);
+	if (!magCapture.GetFrameInfo(info.thumb.width, info.thumb.height, info.thumb.data))
+		break;
 
     auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
     auto itr = windows->find(info.moduleName);

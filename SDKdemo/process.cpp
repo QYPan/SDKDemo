@@ -11,6 +11,8 @@
 #include <MMSystem.h>
 #include <dwmapi.h>
 
+#include "SimpleWindow.h"
+
 #pragma comment(lib, "Dwmapi.lib")
 
 namespace app {
@@ -333,13 +335,29 @@ bool  GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>
 	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, nWidth, nHeight);
 
 	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
-	::BitBlt(hCompatibleDC, 0, 0, nWidth, nHeight, hDC, 0, 0, SRCCOPY);
-	//PrintWindow(hWnd, hCompatibleDC, 0);
+	//::BitBlt(hCompatibleDC, 0, 0, nWidth, nHeight, hDC, 0, 0, SRCCOPY);
+	PrintWindow(hWnd, hCompatibleDC, 0);
 
 	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
 
 	/*TCHAR* filename = _T("test.bmp");
 	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
+
+	struct { BITMAPINFO info; RGBQUAD moreColors[255]; } fbi = { 0 };
+	BITMAPINFOHEADER &bi = fbi.info.bmiHeader;
+	bi.biSize = sizeof(BITMAPINFOHEADER);
+	GetDIBits(hCompatibleDC, hCompatibleBitmap, 0, 0, NULL, &fbi.info, DIB_RGB_COLORS);
+
+	static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage11");
+
+	HDC hViewDC = ::GetDC(pImageWnd1->GetView());
+	SetStretchBltMode(hViewDC, HALFTONE);
+	::StretchBlt(hViewDC, 0, 0, 1280, 720, hDC, 0, 0, nWidth, nHeight, SRCCOPY);
+	ReleaseDC(pImageWnd1->GetView(), hViewDC);
+
+	//::BitBlt(::GetDC(pImageWnd1->GetView()), 0, 0, nWidth, nHeight, hCompatibleDC, 0, 0, SRCCOPY);
+	Sleep(3000);
+	
 	
 	SelectObject(hCompatibleDC, hOldBitmap);
 	::DeleteObject(hCompatibleBitmap);
@@ -349,21 +367,28 @@ bool  GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>
 	return ret;
 }
 
-bool GetDesktopAREAData(RECT & rcArea, int & outWidth, int & outHeight, std::vector<BYTE>& imagedata)
+bool GetDesktopAREAData(RECT & rcArea, std::vector<BYTE>& imagedata, int fillWidth, int fillHeight)
 {
-	outWidth = rcArea.right - rcArea.left;
-	outHeight = rcArea.bottom - rcArea.top;
+	int realWidth = rcArea.right - rcArea.left;
+	int realHeight = rcArea.bottom - rcArea.top;
 
 	HDC hDC = ::GetDC(NULL);
 	HDC hCompatibleDC = ::CreateCompatibleDC(hDC);
-	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, outWidth, outHeight);
+	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, fillWidth, fillHeight);
 	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
-	::StretchBlt(hCompatibleDC, 0, 0, outWidth, outHeight, hDC, rcArea.left, rcArea.top, outWidth, outHeight, SRCCOPY);
+
+	SetStretchBltMode(hCompatibleDC, HALFTONE);
+	::StretchBlt(hCompatibleDC, 0, 0, fillWidth, fillHeight, hDC, rcArea.left, rcArea.top, realWidth, realHeight, SRCCOPY);
 
 	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
 
 	/*TCHAR* filename = _T("test.bmp");
 	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
+
+
+	static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
+	::BitBlt(::GetDC(pImageWnd1->GetView()), 0, 0, fillWidth, fillHeight, hCompatibleDC, 0, 0, SRCCOPY);
+	Sleep(3000);
 
 	SelectObject(hCompatibleDC, hOldBitmap);
 	::DeleteObject(hCompatibleBitmap);

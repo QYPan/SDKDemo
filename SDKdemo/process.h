@@ -62,7 +62,7 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 
 bool GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>& imagedata);
 
-bool GetDesktopAREAData(RECT& rcArea,int& outWidth, int& outHeight, std::vector<BYTE>& imagedata);
+bool GetDesktopAREAData(RECT& rcArea, std::vector<BYTE>& imagedata, int maxWidth, int maxHeight);
 
 void SaveToDisk(const TCHAR* filename, HBITMAP hBitmap, std::vector<BYTE>& imagedata);
 

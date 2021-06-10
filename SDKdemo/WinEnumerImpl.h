@@ -26,8 +26,6 @@ public:
 	IMAGE_INFO thumb;
   }MONITOR_INFO;
 
-  
-
   typedef struct {
 	  HWND sourceId;
 	  std::string sourceName;///< 窗口标题名称，UTF8 编码
@@ -41,7 +39,21 @@ public:
 	  IMAGE_INFO icon;
   }WINDOW_INFO;
 
-  static std::list<MONITOR_INFO> EnumAllMonitors();
+  enum RENDER_TYPE {
+	  RENDER_TYPE_SCALE,
+	  RENDER_TYPE_FILL,
+  };
+
+  typedef struct {
+	  std::list<WindowEnumer::MONITOR_INFO> monitors;
+	  RENDER_TYPE renderType;
+	  int maxWidth;
+	  int maxHeight;
+	  int fillWidth;
+	  int fillHeight;
+  }WIN_MONITORS;
+
+  static std::list<MONITOR_INFO> EnumAllMonitors(int fillWidth, int fillHeight);
 
   static MONITOR_INFO GetMonitorInfoByIndex(int index);
 
