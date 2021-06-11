@@ -951,7 +951,7 @@ bool CAgoraManager::PushVideoFrame(unsigned char * pData, int nW, int nH, long l
 	return ret == 0 ? true : false;
 }
 
-bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nSize, long lSampleRate, int nChannel, long long ms)
+bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nbSamples, long lSampleRate, int nChannel, long long ms)
 {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
@@ -962,7 +962,7 @@ bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nSize, long lSampl
 	frame.channels = nChannel;
 	frame.bytesPerSample = BYTES_PER_SAMPLE::TWO_BYTES_PER_SAMPLE;
 	frame.samplesPerSec = lSampleRate;
-	frame.samplesPerChannel = lSampleRate / 100;
+	frame.samplesPerChannel = nbSamples;
 	frame.renderTimeMs = ms;
 
 	int ret = media_engine_->pushAudioFrame(agora::media::AUDIO_RECORDING_SOURCE, &frame, false, 0, custom_connId_);

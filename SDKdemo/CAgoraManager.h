@@ -170,7 +170,7 @@ public:
 	//Õ∆ÀÕ ”∆µ÷°(BGRA)
 	bool PushVideoFrame(unsigned char* pData, int nW, int nH, long long ms);
 	//Õ∆ÀÕ“Ù∆µ÷°(PCM-16)
-	bool PushAudioFrame(unsigned char* pData, int nSize,
+	bool PushAudioFrame(unsigned char* pData, int nbSamples,
 		long lSampleRate = 48000, int nChannel = 2, long long ms = 0);
 
 
