@@ -143,7 +143,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	ChannelMediaOptions op;
 	op.publishAudioTrack = false;
 	op.publishCameraTrack = false;
-	op.publishScreenTrack = false;
+	op.publishScreenTrack = false; 
 	op.autoSubscribeAudio = false;
 	op.autoSubscribeVideo = false;
 	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
@@ -277,6 +277,7 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 		rtc_engine_->enableLocalAudio(true);
 	}
 
+	SetPushCamera(current_camera_.first);
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
@@ -619,6 +620,7 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 	for (int i = 0; i < camera_list.size(); i++) {
 		if (nCamID == camera_list[i].idx) {
 			video_device_manager->setDevice(camera_list[i].device_id.c_str());
+			current_camera_ = CameraInfo(i, camera_list[i].device_id);
 			break;
 		}
 	}
@@ -868,6 +870,21 @@ void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNEC
 	printf("[I]: onConnectionStateChanged, state: %d, reason: %d, connId: %d\n", state, reason, connId);
 }
 
+void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
+	printf("[I]: onMediaDeviceChanged, deviceTypd: %d, connId: %d\n", deviceType, connId);
+	if (deviceType == 3) {
+		std::vector<CAgoraManager::CameraProg> camera_list;
+		GetCameraList(camera_list);
+		for (int i = 0; i < camera_list.size(); i++) {
+			if (current_camera_.second == camera_list[i].device_id) {
+				StartPushCamera();
+				return;
+			}
+		}
+		StopPushCamera();
+	}
+}
+	
 void CAgoraManager::ResetStates() {
 	is_joined_ = false;
 	is_publish_camera_ = false;

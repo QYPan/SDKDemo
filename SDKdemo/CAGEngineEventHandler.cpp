@@ -51,3 +51,9 @@ void CAGEngineEventHandler::onConnectionStateChanged(CONNECTION_STATE_TYPE state
 		manager_->onConnectionStateChanged(state, reason, conn_id_);
 	}
 }
+
+void CAGEngineEventHandler::onMediaDeviceChanged(int deviceType) { 
+	if (manager_) {
+		manager_->onMediaDeviceChanged(deviceType, conn_id_);
+	}
+}

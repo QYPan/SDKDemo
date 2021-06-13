@@ -202,6 +202,7 @@ public:
 	void OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId);
 	void onError(int err, const char* msg, conn_id_t connId);
 	void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId);
+    void onMediaDeviceChanged(int deviceType, conn_id_t connId);
 
 private:
 	void ResetStates();
@@ -252,5 +253,7 @@ private:
 
 	int current_recording_mode_ = 0;
 
+	typedef std::pair<int, std::string> CameraInfo;
+	CameraInfo current_camera_ = CameraInfo(0, "");
 	bool initialized_ = false;
 };
