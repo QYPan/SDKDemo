@@ -686,7 +686,7 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
 
 	std::list<std::string> vecFilters;
-	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters, 600, 400);
+	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters, 600, 400, 64, 64);
 
 	int winNum = mapWindows.size();
 }

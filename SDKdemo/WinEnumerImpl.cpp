@@ -37,7 +37,7 @@ BOOL WINAPI MonitorEnumCallback(HMONITOR monitor,
     return true;
 
   WindowEnumer::WIN_MONITORS* winMonitors = (WindowEnumer::WIN_MONITORS*)data;
-  auto monitors = winMonitors->monitors;
+  auto& monitors = winMonitors->monitors;
 
   WindowEnumer::MONITOR_INFO info;
   info.index = monitors.size();
@@ -311,59 +311,35 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.isMinimizeWindow = ::IsIconic(hwnd);
 
 	// 获取进程图标
-	HDC hDC = ::GetDC(hwnd);
-	HBITMAP hBitmap = GetProcessIconBitmap(module_name, &info.icon.width, &info.icon.height);
-	GetBitmapRGBAData(hDC, hBitmap, info.icon.data);
-	::ReleaseDC(hwnd, hDC);
+	HDC hdc = ::GetDC(hwnd);
+	int iconWidth, iconHeight;
+	HBITMAP hBitmap = GetProcessIconBitmap(module_name, &iconWidth, &iconHeight);
 
-	// 获取缩略图
-	/*static MagnificationCapture magCapture;
-	RECT wndRect;
-	GetWindowRect(hwnd, &wndRect);
-	magCapture.CaptureFrame(hwnd, wndRect);
-	if (!magCapture.GetFrameInfo(info.thumb.width, info.thumb.height, info.thumb.data))
-		break;*/
+	std::vector<BYTE> iconBuff;
+	if (GetBitmapRGBAData(hdc, hBitmap, iconBuff)) {
+		StretchBitmap(hdc, win_infos->iconWidth, win_infos->iconHeight, iconWidth, iconHeight,
+			(const char*)&iconBuff[0], info.icon.data);
+
+		info.icon.width = win_infos->iconWidth;
+		info.icon.height = win_infos->iconHeight;
+	}
+
+	ReleaseDC(hwnd, hdc);
 
 	uint8_t* thumbdata = NULL;
 	uint32_t width, height;
 	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
-
-		BITMAPINFO bmi = {};
-		bmi.bmiHeader.biHeight = -(int)height;
-		bmi.bmiHeader.biWidth = width;
-		bmi.bmiHeader.biPlanes = 1;
-		bmi.bmiHeader.biBitCount = 32;
-		bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-		bmi.bmiHeader.biSizeImage = width*4 * height;
-
-		HDC window_dc = GetWindowDC(hwnd);
-		HDC mem_dc = CreateCompatibleDC(window_dc);
-		HBITMAP mem_bitmap = CreateCompatibleBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight);
-		SelectObject(mem_dc, mem_bitmap);
-
-		// 缩放图片
-		SetStretchBltMode(mem_dc, HALFTONE);
-		int ret = StretchDIBits(mem_dc, 0, 0, win_infos->fillWidth, win_infos->fillHeight, 0, 0, width, height,
-			thumbdata, &bmi, DIB_RGB_COLORS, SRCCOPY);
-
-		// 获取图片数据
-		info.thumb.data.resize(bmi.bmiHeader.biSizeImage);
-		GetBitmapRGBAData(mem_dc, mem_bitmap, info.thumb.data);
+		HDC window_dc = ::GetWindowDC(hwnd);
+		StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height, 
+			(const char*)thumbdata, info.thumb.data);
+		::ReleaseDC(hwnd, window_dc);
+		
 		info.thumb.width = win_infos->fillWidth;
 		info.thumb.height = win_infos->fillHeight;
 
-		/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
-		HDC hWndDC = ::GetDC(pImageWnd1->GetView());
-		::BitBlt(hWndDC, 0, 0, info.thumb.width, info.thumb.height, mem_dc, 0, 0, SRCCOPY);
-		ReleaseDC(pImageWnd1->GetView(), hWndDC);
-		Sleep(3000);*/
-
-		DeleteObject(mem_bitmap);
-		DeleteObject(mem_dc);
-		ReleaseDC(hwnd, window_dc);
-
 		delete[] thumbdata;
 	}
+	
 	
 
     auto windows = &win_infos->windows;
@@ -380,11 +356,13 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
   return TRUE;
 }
 
-std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight)
+std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight, int nIconSizeW, int nIconSizeH)
 {
 	WINDOWS_ALL_INFO win_infos;
 	win_infos.fillWidth = fillWidth;
 	win_infos.fillHeight = fillHeight;
+	win_infos.iconWidth = nIconSizeW;
+	win_infos.iconHeight = nIconSizeH;
 	std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>& windows = win_infos.windows;
 	::EnumWindows(WindowEnumCallback, (LPARAM)&win_infos);
 

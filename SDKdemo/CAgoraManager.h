@@ -100,7 +100,7 @@ public:
 	void SetPushWindow(HWND hwnd = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
 
-	void GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH);//获得当前可采集窗口列表及属性
+	void GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH, int nIconSizeW, int nIconSizeH);//获得当前可采集窗口列表及属性
 
 	//设置采集桌面(是否可以在推中设置)
 	void SetPushFilter(HWND* pFilterHwndList = nullptr, int nFilterNum = 0);

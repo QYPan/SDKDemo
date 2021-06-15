@@ -381,6 +381,49 @@ void SaveToDisk(const TCHAR * filename, HBITMAP hBitmap, std::vector<BYTE>& imag
 	CloseHandle(hFile);
 }
 
+bool StretchBitmap(HDC hDC, int dstW, int dstH, int srcW, int srcH, const char * srcdata, std::vector<BYTE>& outdata)
+{
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biHeight = -srcH;
+	bmi.bmiHeader.biWidth = srcW;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biSizeImage = srcW * 4 * srcH;
+
+	bool bSucc = false;
+	HDC mem_dc = CreateCompatibleDC(hDC);
+	HBITMAP mem_bitmap = CreateCompatibleBitmap(hDC, dstW, dstH);
+	SelectObject(mem_dc, mem_bitmap);
+
+	do {
+		// 缩放图片
+		SetStretchBltMode(mem_dc, HALFTONE);
+		int ret = StretchDIBits(mem_dc, 0, 0, dstW, dstH, 0, 0, srcW, srcH,
+			srcdata, &bmi, DIB_RGB_COLORS, SRCCOPY);
+		if (!ret)
+			break;
+
+		// 获取图片数据
+		outdata.resize(dstW * 4 * dstH);
+		if (!GetBitmapRGBAData(mem_dc, mem_bitmap, outdata))
+			break;
+
+		bSucc = true;
+	} while (false);
+	
+	/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
+	HDC hWndDC = ::GetDC(pImageWnd1->GetView());
+	::BitBlt(hWndDC, 0, 0, dstW, dstH, mem_dc, 0, 0, SRCCOPY);
+	ReleaseDC(pImageWnd1->GetView(), hWndDC);
+	Sleep(2000);*/
+
+	DeleteObject(mem_bitmap);
+	DeleteObject(mem_dc);
+
+	return bSucc;
+}
+
 }
 }
 

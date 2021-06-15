@@ -57,13 +57,15 @@ public:
 	  std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> windows;
 	  int fillWidth;
 	  int fillHeight;
+	  int iconWidth;
+	  int iconHeight;
   }WINDOWS_ALL_INFO;
 
   static std::list<MONITOR_INFO> EnumAllMonitors(int fillWidth, int fillHeight);
 
   static MONITOR_INFO GetMonitorInfoByIndex(int index);
 
-  static std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight);
+  static std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight, int nIconSizeW, int nIconSizeH);
 };
 
 }

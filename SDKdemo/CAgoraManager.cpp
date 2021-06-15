@@ -423,10 +423,10 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.height = h;
 }
 
-void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH) {
+void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH, int nIconSizeW, int nIconSizeH) {
 
 	std::list<std::string> filters;
-	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters, nThumbSizeW, nThumbSizeH);
+	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters, nThumbSizeW, nThumbSizeH, nIconSizeW, nIconSizeH);
 	if (win_list.size()) {
 		vWindows.clear();
 	}
