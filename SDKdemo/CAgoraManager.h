@@ -99,12 +99,16 @@ public:
 	//设置采集窗口(是否可以在推中设置)
 	void SetPushWindow(HWND hwnd = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	void GetWindowList(std::vector<WindowInfo>& vWindows);//获得当前可采集窗口列表及属性
+
+	void GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH);//获得当前可采集窗口列表及属性
+
 	//设置采集桌面(是否可以在推中设置)
 	void SetPushFilter(HWND* pFilterHwndList = nullptr, int nFilterNum = 0);
 	void SetPushDesktop(int nScreenID = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	void GetDesktopList(std::vector<DesktopInfo>& vDesktop);//获得当前可采集桌面列表及属性
+
+	void GetDesktopList(std::vector<DesktopInfo>& vDesktop, int nThumbSizeW, int nThumbSizeH);//获得当前可采集桌面列表及属性
+
 	//设置采集图像显示窗口(0为取消指定窗口)
 	void SetWindowDesktopShowHwnd(HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 	//设置暂停屏幕推流图像

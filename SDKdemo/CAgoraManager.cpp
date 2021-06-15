@@ -374,8 +374,10 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 	int x, int y, int w, int h) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
+
 	std::vector<DesktopInfo> desktops;
-	GetDesktopList(desktops);
+	GetDesktopList(desktops, 600, 400);
+
 	if (nScreenID < 0 || nScreenID >= desktops.size()) {
 		printf("[E]: SetPushDesktop, desktop_size: %d, screen_id: %d\n", desktops.size(), nScreenID);
 		return;
@@ -421,9 +423,10 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.height = h;
 }
 
-void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows) {
+void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH) {
+
 	std::list<std::string> filters;
-	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters);
+	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters, nThumbSizeW, nThumbSizeH);
 	if (win_list.size()) {
 		vWindows.clear();
 	}
@@ -454,8 +457,8 @@ void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows) {
 	}
 }
 
-void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop) {
-	std::list<app::utils::WindowEnumer::MONITOR_INFO> desktops = app::utils::WindowEnumer::EnumAllMonitors(600, 400);
+void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop, int nThumbSizeW, int nThumbSizeH) {
+	std::list<app::utils::WindowEnumer::MONITOR_INFO> desktops = app::utils::WindowEnumer::EnumAllMonitors(nThumbSizeW, nThumbSizeH);
 	if (desktops.size()) {
 		vDesktop.clear();
 	}

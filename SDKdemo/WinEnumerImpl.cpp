@@ -299,6 +299,7 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
     if (0 == ret)
       break;
 
+	WindowEnumer::WINDOWS_ALL_INFO* win_infos = (WindowEnumer::WINDOWS_ALL_INFO*)data;
 
 	info.x = rc.left;
 	info.y = rc.top;
@@ -308,7 +309,6 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.sourceName = CT2A(window_name, CP_UTF8);
 	info.moduleName = CT2A(module_name);
 	info.isMinimizeWindow = ::IsIconic(hwnd);
-
 
 	// 获取进程图标
 	HDC hDC = ::GetDC(hwnd);
@@ -327,17 +327,46 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	uint8_t* thumbdata = NULL;
 	uint32_t width, height;
 	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
-		info.thumb.width = width;
-		info.thumb.height = height;
 
-		int imgsize = width * 4 * height;
-		info.thumb.data.resize(imgsize);
-		memcpy(&info.thumb.data[0], thumbdata, imgsize);
+		BITMAPINFO bmi = {};
+		bmi.bmiHeader.biHeight = -(int)height;
+		bmi.bmiHeader.biWidth = width;
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+		bmi.bmiHeader.biSizeImage = width*4 * height;
+
+		HDC window_dc = GetWindowDC(hwnd);
+		HDC mem_dc = CreateCompatibleDC(window_dc);
+		HBITMAP mem_bitmap = CreateCompatibleBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight);
+		SelectObject(mem_dc, mem_bitmap);
+
+		// 缩放图片
+		SetStretchBltMode(mem_dc, HALFTONE);
+		int ret = StretchDIBits(mem_dc, 0, 0, win_infos->fillWidth, win_infos->fillHeight, 0, 0, width, height,
+			thumbdata, &bmi, DIB_RGB_COLORS, SRCCOPY);
+
+		// 获取图片数据
+		info.thumb.data.resize(bmi.bmiHeader.biSizeImage);
+		GetBitmapRGBAData(mem_dc, mem_bitmap, info.thumb.data);
+		info.thumb.width = win_infos->fillWidth;
+		info.thumb.height = win_infos->fillHeight;
+
+		/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
+		HDC hWndDC = ::GetDC(pImageWnd1->GetView());
+		::BitBlt(hWndDC, 0, 0, info.thumb.width, info.thumb.height, mem_dc, 0, 0, SRCCOPY);
+		ReleaseDC(pImageWnd1->GetView(), hWndDC);
+		Sleep(3000);*/
+
+		DeleteObject(mem_bitmap);
+		DeleteObject(mem_dc);
+		ReleaseDC(hwnd, window_dc);
+
 		delete[] thumbdata;
 	}
 	
 
-    auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
+    auto windows = &win_infos->windows;
     auto itr = windows->find(info.moduleName);
     if (itr == std::end(*windows)) {
       windows->insert({ info.moduleName,{info} });
@@ -351,10 +380,13 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
   return TRUE;
 }
 
-std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::string>& filters)
+std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> WindowEnumer::EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight)
 {
-	std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> windows;
-	::EnumWindows(WindowEnumCallback, (LPARAM)&windows);
+	WINDOWS_ALL_INFO win_infos;
+	win_infos.fillWidth = fillWidth;
+	win_infos.fillHeight = fillHeight;
+	std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>& windows = win_infos.windows;
+	::EnumWindows(WindowEnumCallback, (LPARAM)&win_infos);
 
 	for (auto filter : filters) {
 		auto itr = std::find_if(windows.begin(), windows.end(),

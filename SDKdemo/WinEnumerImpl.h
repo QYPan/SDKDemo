@@ -53,11 +53,17 @@ public:
 	  int fillHeight;
   }WIN_MONITORS;
 
+  typedef struct {
+	  std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> windows;
+	  int fillWidth;
+	  int fillHeight;
+  }WINDOWS_ALL_INFO;
+
   static std::list<MONITOR_INFO> EnumAllMonitors(int fillWidth, int fillHeight);
 
   static MONITOR_INFO GetMonitorInfoByIndex(int index);
 
-  static std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> EnumAllWindows(const std::list<std::string>& filters);
+  static std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>> EnumAllWindows(const std::list<std::string>& filters, int fillWidth, int fillHeight);
 };
 
 }

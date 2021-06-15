@@ -675,7 +675,7 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 void CSDKdemoDlg::OnBnClickedEnumDisplay()
 {
 	std::vector<CAgoraManager::DesktopInfo> vDesktop;
-	m_agoraManager->GetDesktopList(vDesktop);
+	m_agoraManager->GetDesktopList(vDesktop, 600, 400);
 }
 
 
@@ -686,7 +686,7 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
 
 	std::list<std::string> vecFilters;
-	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters);
+	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters, 600, 400);
 
 	int winNum = mapWindows.size();
 }
