@@ -7,7 +7,9 @@
 #pragma once  // NOLINT(build/header_guard)
 
 #include <cstring>
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
 #include <cstdint>
+#endif
 
 /**
  * set analyze duration for real time stream

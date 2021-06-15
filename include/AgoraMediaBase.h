@@ -11,6 +11,14 @@
 #include <limits>
 #include <stddef.h>
 
+#ifndef OPTIONAL_ENUM_SIZE_T
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_ENUM_SIZE_T enum : size_t
+#else
+#define OPTIONAL_ENUM_SIZE_T enum
+#endif
+#endif
+
 namespace agora {
 namespace rtc {
 
@@ -134,7 +142,7 @@ struct AudioPcmFrame {
   /**
    * The buffer size of the PCM audio frame.
    */
-  enum : size_t {
+  OPTIONAL_ENUM_SIZE_T {
     // Stereo, 32 kHz, 60 ms (2 * 32 * 60)
     /**
      * The max number of the samples of the data.

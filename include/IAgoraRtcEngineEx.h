@@ -10,10 +10,26 @@
 #include <string>
 #include "IAgoraRtcEngine.h"
 
+#ifndef OPTIONAL_ENUM_CLASS
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_ENUM_CLASS enum class
+#else
+#define OPTIONAL_ENUM_CLASS enum
+#endif
+#endif
+
+#ifndef OPTIONAL_NULLPTR
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_NULLPTR nullptr
+#else
+#define OPTIONAL_NULLPTR NULL
+#endif
+#endif
+
 namespace agora {
 namespace rtc {
 
-enum class RTC_EVENT;
+// OPTIONAL_ENUM_CLASS RTC_EVENT;
 
 class IRtcEngineEventHandlerEx : public IRtcEngineEventHandler {
  public:
@@ -1128,7 +1144,7 @@ struct Extension {
   // config should be a json string.
   const char* config;
 
-  Extension() : id(nullptr), path(nullptr), config(nullptr) {}
+  Extension() : id(OPTIONAL_NULLPTR), path(OPTIONAL_NULLPTR), config(OPTIONAL_NULLPTR) {}
 };
 
 struct RtcEngineContextEx {
@@ -1156,7 +1172,7 @@ struct RtcEngineContextEx {
       , enableAudio(true)
       , enableVideo(false)
       , areaCode(AREA_CODE_GLOB)
-      , extensions(nullptr)
+      , extensions(OPTIONAL_NULLPTR)
       , numExtension(0) {}
 };
 

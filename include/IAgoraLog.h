@@ -6,7 +6,25 @@
 #pragma once
 
 #include <cstdlib>
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
 #include <cstdint>
+#endif
+
+#ifndef OPTIONAL_ENUM_CLASS
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_ENUM_CLASS enum class
+#else
+#define OPTIONAL_ENUM_CLASS enum
+#endif
+#endif
+
+#ifndef OPTIONAL_LOG_LEVEL_SPECIFIER
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_LOG_LEVEL_SPECIFIER LOG_LEVEL::
+#else
+#define OPTIONAL_LOG_LEVEL_SPECIFIER
+#endif
+#endif
 
 namespace agora {
 namespace commons {
@@ -14,7 +32,7 @@ namespace commons {
 /**
  * Supported logging severities of SDK
  */
-enum class LOG_LEVEL {
+OPTIONAL_ENUM_CLASS LOG_LEVEL {
   LOG_LEVEL_NONE = 0x0000,
   LOG_LEVEL_INFO = 0x0001,
   LOG_LEVEL_WARN = 0x0002,
@@ -74,7 +92,9 @@ struct LogConfig
    */
   LOG_LEVEL level;
 
-  LogConfig() : filePath(NULL), fileSizeInKB(DEFAULT_LOG_SIZE_IN_KB), level(LOG_LEVEL::LOG_LEVEL_INFO) {}
+  LogConfig() : filePath(NULL), fileSizeInKB(DEFAULT_LOG_SIZE_IN_KB), level(OPTIONAL_LOG_LEVEL_SPECIFIER LOG_LEVEL_INFO) {}
 };
 } //namespace commons
 } //namespace agora
+
+#undef OPTIONAL_LOG_LEVEL_SPECIFIER

@@ -57,6 +57,22 @@
 
 #endif  // _WIN32
 
+#ifndef OPTIONAL_ENUM_SIZE_T
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_ENUM_SIZE_T enum : size_t
+#else
+#define OPTIONAL_ENUM_SIZE_T enum
+#endif
+#endif
+
+#ifndef OPTIONAL_NULLPTR
+#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1800)
+#define OPTIONAL_NULLPTR nullptr
+#else
+#define OPTIONAL_NULLPTR NULL
+#endif
+#endif
+
 namespace agora {
 namespace commons {
 namespace cjson {
@@ -2417,7 +2433,7 @@ enum AUDIO_SCENARIO_TYPE {
  * The definition of the VideoFormat struct.
  */
 struct VideoFormat {
-  enum : size_t {
+  OPTIONAL_ENUM_SIZE_T {
     /** The maximum value (px) of the width. */
     kMaxWidthInPixels = 3840,
     /** The maximum value (px) of the height. */
@@ -4030,13 +4046,13 @@ struct ScreenCaptureParameters {
   int excludeWindowCount;
   
   ScreenCaptureParameters()
-    : dimensions(1920, 1080), frameRate(5), bitrate(STANDARD_BITRATE), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(1920, 1080), frameRate(5), bitrate(STANDARD_BITRATE), captureMouseCursor(true), windowFocus(false), excludeWindowList(OPTIONAL_NULLPTR), excludeWindowCount(0) {}
   ScreenCaptureParameters(const VideoDimensions& d, int f, int b)
-    : dimensions(d), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(d), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(OPTIONAL_NULLPTR), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b)
-    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(OPTIONAL_NULLPTR), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b, bool cur, bool fcs)
-    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(nullptr), excludeWindowCount(0) {}
+    : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(cur), windowFocus(fcs), excludeWindowList(OPTIONAL_NULLPTR), excludeWindowCount(0) {}
   ScreenCaptureParameters(int width, int height, int f, int b, view_t *ex, int cnt)
     : dimensions(width, height), frameRate(f), bitrate(b), captureMouseCursor(true), windowFocus(false), excludeWindowList(ex), excludeWindowCount(cnt) {}
   ScreenCaptureParameters(int width, int height, int f, int b, bool cur, bool fcs, view_t *ex, int cnt)
@@ -4537,18 +4553,18 @@ struct DownlinkNetworkInfo {
     int expected_bitrate_bps;
 
     PeerDownlinkInfo()
-        : uid(nullptr),
+        : uid(OPTIONAL_NULLPTR),
           stream_type(VIDEO_STREAM_HIGH),
           current_downscale_level(REMOTE_VIDEO_DOWNSCALE_LEVEL_NONE),
           expected_bitrate_bps(-1) {}
 
     PeerDownlinkInfo& operator=(const PeerDownlinkInfo& rhs) {
       if (this == &rhs) return *this;
-      uid = nullptr;
+      uid = OPTIONAL_NULLPTR;
       stream_type = rhs.stream_type;
       current_downscale_level = rhs.current_downscale_level;
       expected_bitrate_bps = rhs.expected_bitrate_bps;
-      if (rhs.uid != nullptr) {
+      if (rhs.uid != OPTIONAL_NULLPTR) {
         char* temp = new char[strlen(rhs.uid) + 1];
         strcpy(temp, rhs.uid);
         uid = temp;
@@ -4586,14 +4602,14 @@ struct DownlinkNetworkInfo {
       : lastmile_buffer_delay_time_ms(-1),
         bandwidth_estimation_bps(-1),
         total_downscale_level_count(-1),
-        peer_downlink_info(nullptr),
+        peer_downlink_info(OPTIONAL_NULLPTR),
         total_received_video_count(-1) {}
 
   DownlinkNetworkInfo(const DownlinkNetworkInfo& info)
     : lastmile_buffer_delay_time_ms(info.lastmile_buffer_delay_time_ms),
       bandwidth_estimation_bps(info.bandwidth_estimation_bps),
       total_downscale_level_count(info.total_downscale_level_count),
-      peer_downlink_info(nullptr),
+      peer_downlink_info(OPTIONAL_NULLPTR),
       total_received_video_count(info.total_received_video_count) {
     if (total_received_video_count <= 0) return;
     peer_downlink_info = new PeerDownlinkInfo[total_received_video_count];
@@ -4606,7 +4622,7 @@ struct DownlinkNetworkInfo {
     lastmile_buffer_delay_time_ms = rhs.lastmile_buffer_delay_time_ms;
     bandwidth_estimation_bps = rhs.bandwidth_estimation_bps;
     total_downscale_level_count = rhs.total_downscale_level_count;
-    peer_downlink_info = nullptr;
+    peer_downlink_info = OPTIONAL_NULLPTR;
     total_received_video_count = rhs.total_received_video_count;
     if (total_received_video_count > 0) {
       peer_downlink_info = new PeerDownlinkInfo[total_received_video_count];
@@ -4627,12 +4643,12 @@ enum ENCRYPTION_MODE {
   /** 4: 128-bit SM4 encryption, ECB mode.
    */
   SM4_128_ECB = 4,
-  /** 5: (Default) 128-bit AES encryption, GCM mode.
+  /** 7: (Default) 128-bit AES encryption, GCM mode, with KDF salt.
    */
-  AES_128_GCM = 5,
-  /** 6: 256-bit AES encryption, GCM mode.
+  AES_128_GCM2 = 7,
+  /** 8: 256-bit AES encryption, GCM mode, with KDF salt.
    */
-  AES_256_GCM = 6,
+  AES_256_GCM2 = 8,
   /** Enumerator boundary.
    */
   MODE_END,
@@ -4641,7 +4657,7 @@ enum ENCRYPTION_MODE {
 /** Configurations of the built-in encryption schemas. */
 struct EncryptionConfig {
   /**
-   * The encryption mode. The default encryption mode is `AES_128_GCM`. See #ENCRYPTION_MODE.
+   * The encryption mode. The default encryption mode is `AES_128_GCM2`. See #ENCRYPTION_MODE.
    */
   ENCRYPTION_MODE encryptionMode;
   /**
@@ -4653,7 +4669,7 @@ struct EncryptionConfig {
   uint8_t encryptionKdfSalt[32];
 
   EncryptionConfig()
-    : encryptionMode(AES_128_GCM),
+    : encryptionMode(AES_128_GCM2),
       encryptionKey(NULL)
   {
     memset(encryptionKdfSalt, 0, sizeof(encryptionKdfSalt));
@@ -4664,9 +4680,9 @@ struct EncryptionConfig {
     switch(encryptionMode) {
       case SM4_128_ECB:
         return "sm4-128-ecb";
-      case AES_128_GCM:
+      case AES_128_GCM2:
         return "aes-128-gcm";
-      case AES_256_GCM:
+      case AES_256_GCM2:
         return "aes-256-gcm";
       default:
         return "aes-128-gcm";
