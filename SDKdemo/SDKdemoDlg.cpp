@@ -278,11 +278,11 @@ void CSDKdemoDlg::initData()
 	static bool done = false;
 	if(!done)
 	{
-		m_agoraManager = CAgoraManager::Inst();
+		m_agoraManager = CAgoraManager::GetInstace();
 		m_agoraManager->EnableVideoFrameObserver(true);
 		m_agoraManager->Init(GetAppId().c_str());
 
-		std::vector<CAgoraManager::CameraProg> camera_list;
+		std::vector<CAgoraManager::CameraInfo> camera_list;
 		m_agoraManager->GetCameraList(camera_list);
 		for (int i = 0; i < camera_list.size(); i++) {
 			CString device_name_ansi(wide2ansi(utf82wide(camera_list[i].device_name_utf8)).c_str());
@@ -292,7 +292,7 @@ void CSDKdemoDlg::initData()
 		if(m_cmbCameraList.GetCount() != 0)
 			m_cmbCameraList.SetCurSel(0);
 
-		std::vector<CAgoraManager::MicProg> mic_list;
+		std::vector<CAgoraManager::MicInfo> mic_list;
 		m_agoraManager->GetMicList(mic_list);
 		for (int i = 0; i < mic_list.size(); i++) {
 			//CString device_name(mic_list[i].device_name.c_str());
@@ -527,7 +527,7 @@ void CSDKdemoDlg::OnCbnSelchangeComboUsers()
 		SimpleWindow* win = new SimpleWindow((const char *)CStringA(str_uid));
 		m_agoraManager->SetPlayerShowHwnd(uid, win->GetView());
 		m_users_win[uid] = win;
-		m_agoraManager->PlayVideo(uid);
+		m_agoraManager->StartPlayer(uid);
 	}
 }
 
@@ -617,14 +617,14 @@ void CSDKdemoDlg::OnBnClickedButtonMuteCamera()
 
 void CSDKdemoDlg::OnBnClickedButtonMuteScreen()
 {
-	if(m_agoraManager->IsScreenPushPause())
+	if(m_agoraManager->IsPushScreenPause())
 	{
-		m_agoraManager->SetScreenPushPause(false);
+		m_agoraManager->SetPushScreenPause(false);
 		m_btnMuteScreen.SetWindowText(_T("Pause Screen"));
 	}
 	else
 	{
-		m_agoraManager->SetScreenPushPause(true);
+		m_agoraManager->SetPushScreenPause(true);
 		m_btnMuteScreen.SetWindowText(_T("Resume Screen"));
 	}
 }
@@ -633,7 +633,7 @@ void CSDKdemoDlg::OnBnClickedButtonMuteScreen()
 void CSDKdemoDlg::OnCbnSelchangeComboCameraList()
 {
 	int id = m_cmbCameraList.GetCurSel();
-	std::vector<CAgoraManager::CameraProg> camera_list;
+	std::vector<CAgoraManager::CameraInfo> camera_list;
 	m_agoraManager->GetCameraList(camera_list);
 
 	if (id < camera_list.size()) {
@@ -645,7 +645,7 @@ void CSDKdemoDlg::OnCbnSelchangeComboCameraList()
 void CSDKdemoDlg::OnCbnSelchangeComboMicList()
 {
 	int id = m_cmbMicList.GetCurSel();
-	std::vector<CAgoraManager::MicProg> mic_list;
+	std::vector<CAgoraManager::MicInfo> mic_list;
 	m_agoraManager->GetMicList(mic_list);
 
 	if (id < mic_list.size()) {
@@ -674,7 +674,7 @@ void CSDKdemoDlg::OnBnClickedCheckVideoObserver()
 
 void CSDKdemoDlg::OnBnClickedEnumDisplay()
 {
-	std::vector<CAgoraManager::DesktopProg> vDesktop;
+	std::vector<CAgoraManager::DesktopInfo> vDesktop;
 	m_agoraManager->GetDesktopList(vDesktop);
 }
 
@@ -694,7 +694,7 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 
 void CSDKdemoDlg::OnBnClickedPublishCustom()
 {
-	if (!m_agoraManager->IsPushSourceVideo()) {
+	if (!m_agoraManager->IsPushCustom()) {
 		publishCustomMedia();
 		m_btnPublishCustom.SetWindowText(_T("Unpublish Custom"));
 	}
@@ -707,10 +707,10 @@ void CSDKdemoDlg::OnBnClickedPublishCustom()
 
 void CSDKdemoDlg::publishCustomMedia()
 {
-	if (!m_agoraManager->IsJoinChannel() || m_agoraManager->IsPushSourceVideo())
+	if (!m_agoraManager->IsJoinChannel() || m_agoraManager->IsPushCustom())
 		return;
 
-	m_agoraManager->StartSourceVideo();
+	m_agoraManager->StartPushCustom();
 
 	std::thread th([this] {
 		const int VIDEO_WIDTH = 640;
@@ -727,7 +727,7 @@ void CSDKdemoDlg::publishCustomMedia()
 		int FrameSize = VIDEO_WIDTH * VIDEO_HEIGHT * 4;
 		uint8_t* frameBuff = new uint8_t[FrameSize];
 
-		while (m_agoraManager->IsPushSourceVideo()) {
+		while (m_agoraManager->IsPushCustom()) {
 			size_t readBytes = fread(frameBuff, FrameSize, 1, file);
 			if (readBytes == 0) {
 				fseek(file, 0, SEEK_SET);
@@ -744,8 +744,8 @@ void CSDKdemoDlg::publishCustomMedia()
 			Sleep(diff);
 		}
 
-		if (m_agoraManager->IsPushSourceVideo())
-			m_agoraManager->StopPushSourceVideo();
+		if (m_agoraManager->IsPushCustom())
+			m_agoraManager->StopPushCustom();
 
 		delete[] frameBuff;
 		fclose(file);
@@ -769,7 +769,7 @@ void CSDKdemoDlg::publishCustomMedia()
 		int FrameSize = sampleRate * frameDuration / 1000 * channelNum * 2;
 		uint8_t* frameBuff = new uint8_t[FrameSize];
 
-		while (m_agoraManager->IsPushSourceVideo() && fread(frameBuff, FrameSize, 1, file)) {
+		while (m_agoraManager->IsPushCustom() && fread(frameBuff, FrameSize, 1, file)) {
 			bool ret = m_agoraManager->PushAudioFrame(frameBuff, FrameSize, sampleRate, channelNum, 0);
 			if (!ret) {
 				printf("[W]: PushVideoFrame ret: %d\n", ret);
@@ -777,8 +777,8 @@ void CSDKdemoDlg::publishCustomMedia()
 			Sleep(frameDuration - 1);
 		}
 
-		if (m_agoraManager->IsPushSourceVideo())
-			m_agoraManager->StopPushSourceVideo();
+		if (m_agoraManager->IsPushCustom())
+			m_agoraManager->StopPushCustom();
 
 		delete[] frameBuff;
 		fclose(file);
@@ -789,6 +789,6 @@ void CSDKdemoDlg::publishCustomMedia()
 
 void CSDKdemoDlg::unpublishCustomMedia()
 {
-	if(m_agoraManager->IsPushSourceVideo())
-		m_agoraManager->StopPushSourceVideo();
+	if(m_agoraManager->IsPushCustom())
+		m_agoraManager->StopPushCustom();
 }

@@ -16,13 +16,13 @@ class CAgoraManager
 	CAgoraManager();
 	~CAgoraManager();
 public:
-	struct MicProg {
+	struct MicInfo {
 		int idx = -1;
 		std::string device_id;
 		std::string device_name_utf8;
 	};
 
-	struct CameraProg {
+	struct CameraInfo {
 		int idx = -1;
 		std::string device_id;
 		std::string device_name_utf8;
@@ -42,7 +42,7 @@ public:
 		{};
 	};
 
-	struct WinProg {
+	struct WindowInfo {
 		HWND sourceId;
 		std::string    sourceName;///< 窗口标题名称，UTF8 编码
 		bool           isMinimizeWindow;///< 是否为最小化窗口
@@ -54,7 +54,7 @@ public:
 		AgoraImageBuffer thumbBGRA;          ///< 缩略图内容
 	};
 
-	struct DesktopProg
+	struct DesktopInfo
 	{
 		int sourceId;
 		std::string   sourceName;///< 采集源名称，UTF8 编码
@@ -73,7 +73,7 @@ public:
 	};
 public:
 	//首次调用需写入AppID
-	static CAgoraManager* Inst();
+	static CAgoraManager* GetInstace();
 	static void Destroy();
 
 	bool Init(const char* lpAppID);
@@ -91,7 +91,7 @@ public:
 
 
 	//推流屏幕相关功能
-	bool StartPushScreen(bool bWithMic = false);
+	bool StartPushScreen(bool bWithMic = false, int nPushFps = 15);
 	void UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFrameRate);
 	bool StopPushScreen();
 	bool IsPushScreen();
@@ -99,21 +99,19 @@ public:
 	//设置采集窗口(是否可以在推中设置)
 	void SetPushWindow(HWND hwnd = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	void GetWindowList(std::vector<WinProg>& vWindows);//获得当前可采集窗口列表及属性
+	void GetWindowList(std::vector<WindowInfo>& vWindows);//获得当前可采集窗口列表及属性
 	//设置采集桌面(是否可以在推中设置)
 	void SetPushFilter(HWND* pFilterHwndList = nullptr, int nFilterNum = 0);
 	void SetPushDesktop(int nScreenID = 0,
 		int x = 0, int y = 0, int w = 0, int h = 0);
-	void GetDesktopList(std::vector<DesktopProg>& vDesktop);//获得当前可采集桌面列表及属性
-	//获得当前采集窗口/桌面尺寸
-	void GetWindowDesktopSize(int& nRetW, int& nRetH);
+	void GetDesktopList(std::vector<DesktopInfo>& vDesktop);//获得当前可采集桌面列表及属性
 	//设置采集图像显示窗口(0为取消指定窗口)
 	void SetWindowDesktopShowHwnd(HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 	//设置暂停屏幕推流图像
-	void SetScreenPushPause(bool bPause = true);
-	bool IsScreenPushPause();
-	void SetPushScreenMicMute(bool bMute = true);
-	bool IsPushScreenMicMute();
+	void SetPushScreenPause(bool bPause = true);
+	bool IsPushScreenPause();
+	void SetPushScreenAudioMute(bool bMute = true);
+	bool IsPushScreenAudioMute();
 
 
 	//摄像头相关
@@ -123,7 +121,7 @@ public:
 	bool IsPushCamera();
 	//设置采集摄像头
 	void SetPushCamera(int nCamID = -1);//-1为默认摄像头
-	void GetCameraList(std::vector<CameraProg>& vCamera);//获得当前可采集摄像头列表及属性
+	void GetCameraList(std::vector<CameraInfo>& vCamera);//获得当前可采集摄像头列表及属性
 	//void GetCameraParamList(int nCamID, std::vector<CameraParam>& vParam);//获得当前指定摄像头参数
 	//设置摄像头显示窗口(0为取消指定窗口)
 	void SetCameraShowHwnd(HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
@@ -132,19 +130,19 @@ public:
 	//设置摄像头推流状态
 	void SetPushCameraPause(bool bPause = true);
 	bool IsPushCameraPause();
-	void SetPushCameraMicMute(bool bMute = true);
-	bool IsPushCameraMicMute();
+	void SetPushCameraAudioMute(bool bMute = true);
+	bool IsPushCameraAudioMute();
 
 	void SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd = 0, agora::media::base::RENDER_MODE_TYPE renderMode = agora::media::base::RENDER_MODE_TYPE::RENDER_MODE_FIT);
 
 
 	//麦克相关
 	void SetMic(int nID = -1);//-1为默认麦克风
-	void GetMicList(std::vector<MicProg>& vMic);//获得当前麦克风列表及属性
+	void GetMicList(std::vector<MicInfo>& vMic);//获得当前麦克风列表及属性
 
 	// - 0: Mute the recording volume.
-	// - 100: The Original volume.
-	// - 400: (Maximum) Four times the original volume with signal clipping
+    // - 100: The Original volume.
+    // - 400: (Maximum) Four times the original volume with signal clipping
 	void SetMicVolume(int nVol);
 
 	// The value range is [0, 255].
@@ -155,37 +153,36 @@ public:
 
 
 	//播放指定远端uid对象
-	void PlayVideo(agora::rtc::uid_t uid);
+	void StartPlayer(agora::rtc::uid_t uid);
 	//停止播放指定远端uid对象
-	void StopVideo(agora::rtc::uid_t uid);
+	void StopPlayer(agora::rtc::uid_t uid);
+	//指定远端uid对象设置画面暂停
+	void PausePlayer(agora::rtc::uid_t uid, bool bPause = true);
 	//指定远端uid对象设置静音状态
-	void MuteVideo(agora::rtc::uid_t uid, bool bMute = true);
+	void MutePlayer(agora::rtc::uid_t uid, bool bMute = true);
 
 	//开始自定义推流
-	bool StartSourceVideo();
+	bool StartPushCustom();
 	//停止自定义推流
-	bool StopPushSourceVideo();
+	bool StopPushCustom();
 	//是否自定义推流
-	bool IsPushSourceVideo();
+	bool IsPushCustom();
 	//推送视频帧(BGRA)
 	bool PushVideoFrame(unsigned char* pData, int nW, int nH, long long ms);
 	//推送音频帧(PCM-16)
-	bool PushAudioFrame(unsigned char* pData, int nbSamples,
+	bool PushAudioFrame(unsigned char* pData, int nbSamples, 
 		long lSampleRate = 48000, int nChannel = 2, long long ms = 0);
 
 
 	//获得图像数据RGBA
 	//获得指定远端uid对象播放的图像数据
-	int GetPlayerImageW(agora::rtc::uid_t uid);
-	int GetPlayerImageH(agora::rtc::uid_t uid);
+	bool GetPlayerImageSize(agora::rtc::uid_t uid, int& nRetW, int& nRetH);
 	bool GetPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int& nRetW, int& nRetH);
 	//获得推流摄像头的图像数据
-	int GetCameraImageW();
-	int GetCameraImageH();
+	bool GetCameraImageSize(int& nRetW, int& nRetH);
 	bool GetCameraImage(BYTE* pData, int& nRetW, int& nRetH);
 	//获得推流屏幕的图像数据
-	int GetScreenImageW();
-	int GetScreenImageH();
+	bool GetScreenImageSize(int& nRetW, int& nRetH);
 	bool GetScreenImage(BYTE* pData, int& nRetW, int& nRetH);
 	//获得当前所有可播放的uid
 	void GetPlayerUID(std::vector<agora::rtc::uid_t>& uidList);
@@ -202,7 +199,7 @@ public:
 	void OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId);
 	void onError(int err, const char* msg, conn_id_t connId);
 	void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId);
-    void onMediaDeviceChanged(int deviceType, conn_id_t connId);
+	void onMediaDeviceChanged(int deviceType, conn_id_t connId);
 
 private:
 	void ResetStates();
@@ -253,7 +250,7 @@ private:
 
 	int current_recording_mode_ = 0;
 
-	typedef std::pair<int, std::string> CameraInfo;
-	CameraInfo current_camera_ = CameraInfo(0, "");
+	typedef std::pair<int, std::string> DeviceInfo;
+	DeviceInfo current_camera_ = DeviceInfo(0, "");
 	bool initialized_ = false;
 };

@@ -25,7 +25,7 @@ CAgoraManager::CAgoraManager() {}
 
 CAgoraManager::~CAgoraManager() { Release(); }
 
-CAgoraManager* CAgoraManager::Inst() {
+CAgoraManager* CAgoraManager::GetInstace() {
 	if (instance_ == nullptr) {
 		instance_ = new CAgoraManager();
 	}
@@ -296,17 +296,21 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 bool CAgoraManager::StopPushCamera() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		if (!IsPushCamera()) {
-			printf("[I]: StopPushCamera, already stop camera\n");
-			return true;
-		}
+	if (!IsPushCamera()) {
+		printf("[I]: StopPushCamera, already stop camera\n");
+		return true;
+	}
 
 	int ret = rtc_engine_->enableLocalVideo(false);
-	if (ret == 0) {
+	int ret1 = rtc_engine_->enableLocalAudio(false);
+
+	printf("[I]: StopPushCamera, ret: %d, ret1: %d\n", ret, ret1);
+
+	if (ret == 0 && ret1 == 0) {
 		is_publish_camera_ = false;
 	}
 
-	return ret ? false : true;
+	return ((ret == 0 && ret1 == 0) ? false : true);
 }
 
 bool CAgoraManager::IsPushCamera() {
@@ -323,17 +327,17 @@ void CAgoraManager::UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFram
 	printf("[I]: updateScreenCaptureParameters, ret: %d\n", ret);
 }
 
-bool CAgoraManager::StartPushScreen(bool bWithMic) {
+bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		if (IsPushScreen()) {
-			printf("[I]: StartPushScreen, already start screen share\n");
-			return true;
-		}
+	if (IsPushScreen()) {
+		printf("[I]: StartPushScreen, already start screen share\n");
+		return true;
+	}
 
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
-	param_.frameRate = 15;
+	param_.frameRate = nPushFps;
 
 	int ret = -1;
 	int ret1 = -1;
@@ -370,7 +374,7 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 	int x, int y, int w, int h) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		std::vector<DesktopProg> desktops;
+	std::vector<DesktopInfo> desktops;
 	GetDesktopList(desktops);
 	if (nScreenID < 0 || nScreenID >= desktops.size()) {
 		printf("[E]: SetPushDesktop, desktop_size: %d, screen_id: %d\n", desktops.size(), nScreenID);
@@ -417,7 +421,7 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.height = h;
 }
 
-void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
+void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows) {
 	std::list<std::string> filters;
 	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters);
 	if (win_list.size()) {
@@ -426,7 +430,7 @@ void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
 
 	for (auto it = win_list.begin(); it != win_list.end(); it++) {
 		for (auto item = it->second.begin(); item != it->second.end(); item++) {
-			WinProg prog;
+			WindowInfo prog;
 			prog.sourceId = item->sourceId;
 			prog.sourceName = item->sourceName;
 			prog.isMinimizeWindow = item->isMinimizeWindow;
@@ -450,14 +454,14 @@ void CAgoraManager::GetWindowList(std::vector<WinProg>& vWindows) {
 	}
 }
 
-void CAgoraManager::GetDesktopList(std::vector<DesktopProg>& vDesktop) {
+void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop) {
 	std::list<app::utils::WindowEnumer::MONITOR_INFO> desktops = app::utils::WindowEnumer::EnumAllMonitors(600, 400);
 	if (desktops.size()) {
 		vDesktop.clear();
 	}
 
 	for (auto it = desktops.begin(); it != desktops.end(); it++) {
-		DesktopProg prog;
+		DesktopInfo prog;
 		prog.sourceId = it->index;
 		prog.isMainScreen = it->is_primary;
 		prog.x = it->rc.left;
@@ -509,20 +513,12 @@ void CAgoraManager::EnableVideoFrameObserver(bool enable) {
 	is_enable_video_observer_ = enable;
 }
 
-int CAgoraManager::GetPlayerImageW(agora::rtc::uid_t uid) {
+bool CAgoraManager::GetPlayerImageSize(agora::rtc::uid_t uid, int& nRetW, int& nRetH) {
 	if (video_frame_observer_) {
-		return video_frame_observer_->getPlayerImageW(uid);
+		return video_frame_observer_->GetPlayerImageSize(uid, nRetW, nRetH);
 	}
 
-	return 0;
-}
-
-int CAgoraManager::GetPlayerImageH(agora::rtc::uid_t uid) {
-	if (video_frame_observer_) {
-		return video_frame_observer_->getPlayerImageH(uid);
-	}
-
-	return 0;
+	return false;
 }
 
 bool CAgoraManager::GetPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int& nRetW, int& nRetH) {
@@ -533,18 +529,12 @@ bool CAgoraManager::GetPlayerImage(agora::rtc::uid_t uid, BYTE* pData, int& nRet
 	return false;
 }
 
-int CAgoraManager::GetCameraImageW() {
+bool CAgoraManager::GetCameraImageSize(int& nRetW, int& nRetH) {
 	if (video_frame_observer_) {
-		return video_frame_observer_->getCameraImageW();
+		return video_frame_observer_->GetCameraImageSize(nRetW, nRetH);
 	}
 
-	return 0;
-}
-
-int CAgoraManager::GetCameraImageH() {
-	if (video_frame_observer_) {
-		return video_frame_observer_->getCameraImageH();
-	}
+	return false;
 }
 
 bool CAgoraManager::GetCameraImage(BYTE* pData, int& nRetW, int& nRetH) {
@@ -555,16 +545,12 @@ bool CAgoraManager::GetCameraImage(BYTE* pData, int& nRetW, int& nRetH) {
 	return false;
 }
 
-int CAgoraManager::GetScreenImageW() {
+bool CAgoraManager::GetScreenImageSize(int& nRetW, int& nRetH) {
 	if (video_frame_observer_) {
-		return video_frame_observer_->getScreenImageW();
+		return video_frame_observer_->GetScreenImageSize(nRetW, nRetH);
 	}
-}
 
-int CAgoraManager::GetScreenImageH() {
-	if (video_frame_observer_) {
-		return video_frame_observer_->getScreenImageH();
-	}
+	return false;
 }
 
 bool CAgoraManager::GetScreenImage(BYTE* pData, int& nRetW, int& nRetH) {
@@ -589,24 +575,24 @@ bool CAgoraManager::IsPushCameraPause() {
 	return is_mute_camera_;
 }
 
-void CAgoraManager::SetPushCameraMicMute(bool bMute) {
+void CAgoraManager::SetPushCameraAudioMute(bool bMute) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->muteLocalAudioStream(bMute);
+	int ret = rtc_engine_->muteLocalAudioStream(bMute);
 	printf("[I]: muteLocalAudioStream, mute: %d, ret: %d\n", bMute, ret);
 	if (ret == 0) {
 		is_mute_mic_ = bMute;
 	}
 }
 
-bool CAgoraManager::IsPushCameraMicMute() {
+bool CAgoraManager::IsPushCameraAudioMute() {
 	return is_mute_mic_;
 }
 
 void CAgoraManager::SetPushCamera(int nCamID) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::rtc::IVideoDeviceManager* vdm = nullptr;
+	agora::rtc::IVideoDeviceManager* vdm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&vdm));
 	if (!vdm) {
@@ -615,21 +601,21 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 
 	std::unique_ptr<agora::rtc::IVideoDeviceManager> video_device_manager(vdm);
 
-	std::vector<CameraProg> camera_list;
+	std::vector<CameraInfo> camera_list;
 	GetCameraList(camera_list);
 	for (int i = 0; i < camera_list.size(); i++) {
 		if (nCamID == camera_list[i].idx) {
 			video_device_manager->setDevice(camera_list[i].device_id.c_str());
-			current_camera_ = CameraInfo(i, camera_list[i].device_id);
+			current_camera_ = DeviceInfo(i, camera_list[i].device_id);
 			break;
 		}
 	}
 }
 
-void CAgoraManager::GetCameraList(std::vector<CameraProg>& vCamera) {
+void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::rtc::IVideoDeviceManager* vdm = nullptr;
+	agora::rtc::IVideoDeviceManager* vdm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&vdm));
 	if (!vdm) {
@@ -646,7 +632,7 @@ void CAgoraManager::GetCameraList(std::vector<CameraProg>& vCamera) {
 
 	char device_name_utf8[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
 	char device_id[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
-	CameraProg camera_prog;
+	CameraInfo camera_prog;
 
 	for (int i = 0; i < count; i++) {
 		memset(device_name_utf8, 0, agora::rtc::MAX_DEVICE_ID_LENGTH);
@@ -662,7 +648,7 @@ void CAgoraManager::GetCameraList(std::vector<CameraProg>& vCamera) {
 void CAgoraManager::SetMic(int nID) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::rtc::IAudioDeviceManager* adm = nullptr;
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
@@ -671,7 +657,7 @@ void CAgoraManager::SetMic(int nID) {
 
 	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
 
-	std::vector<MicProg> mic_list;
+	std::vector<MicInfo> mic_list;
 	GetMicList(mic_list);
 	for (int i = 0; i < mic_list.size(); i++) {
 		if (nID == mic_list[i].idx) {
@@ -681,10 +667,10 @@ void CAgoraManager::SetMic(int nID) {
 	}
 }
 
-void CAgoraManager::GetMicList(std::vector<MicProg>& vMic) {
+void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::rtc::IAudioDeviceManager* adm = nullptr;
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
@@ -701,7 +687,7 @@ void CAgoraManager::GetMicList(std::vector<MicProg>& vMic) {
 
 	char device_name_utf8[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
 	char device_id[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
-	MicProg mic_prog;
+	MicInfo mic_prog;
 
 	for (int i = 0; i < count; i++) {
 		memset(device_name_utf8, 0, agora::rtc::MAX_DEVICE_ID_LENGTH);
@@ -716,7 +702,7 @@ void CAgoraManager::GetMicList(std::vector<MicProg>& vMic) {
 
 void CAgoraManager::SetMicVolume(int nVol) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
-		int ret = rtc_engine_->adjustRecordingSignalVolume(nVol);
+	int ret = rtc_engine_->adjustRecordingSignalVolume(nVol);
 	printf("[I]: adjustRecordingSignalVolume, ret: %d\n", ret);
 }
 
@@ -766,28 +752,35 @@ void CAgoraManager::SetPushSystemAudio(int nMode) {
 	current_recording_mode_ = nMode;
 }
 
-void CAgoraManager::PlayVideo(agora::rtc::uid_t uid) {
+void CAgoraManager::StartPlayer(agora::rtc::uid_t uid) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->muteRemoteVideoStream(uid, false);
+	int ret = rtc_engine_->muteRemoteVideoStream(uid, false);
 	int ret1 = rtc_engine_->muteRemoteAudioStream(uid, false);
 	printf("[I]: muteRemoteVideoStream(false), ret: %d\n", ret);
 	printf("[I]: muteRemoteAudioStream(false), ret: %d\n", ret1);
 }
 
-void CAgoraManager::StopVideo(agora::rtc::uid_t uid) {
+void CAgoraManager::StopPlayer(agora::rtc::uid_t uid) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->muteRemoteVideoStream(uid, true);
+	int ret = rtc_engine_->muteRemoteVideoStream(uid, true);
 	int ret1 = rtc_engine_->muteRemoteAudioStream(uid, true);
 	printf("[I]: muteRemoteVideoStream(true), ret: %d\n", ret);
 	printf("[I]: muteRemoteAudioStream(true), ret: %d\n", ret1);
 }
 
-void CAgoraManager::MuteVideo(agora::rtc::uid_t uid, bool bMute) {
+void CAgoraManager::PausePlayer(agora::rtc::uid_t uid, bool bPause) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->muteRemoteAudioStream(uid, bMute);
+	int ret = rtc_engine_->muteRemoteVideoStream(uid, bPause);
+	printf("[I]: muteRemoteVideoStream(camera), mute: %d, ret: %d\n", bPause, ret);
+}
+
+void CAgoraManager::MutePlayer(agora::rtc::uid_t uid, bool bMute) {
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
+	int ret = rtc_engine_->muteRemoteAudioStream(uid, bMute);
 	printf("[I]: muteRemoteAudioStream(camera), mute: %d, ret: %d\n", bMute, ret);
 }
 
@@ -809,7 +802,7 @@ void CAgoraManager::OnJoinChannelSuccess(const char* channel, uid_t uid, int ela
 	}
 }
 
-void CAgoraManager::SetScreenPushPause(bool bPause) {
+void CAgoraManager::SetPushScreenPause(bool bPause) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 		ChannelMediaOptions op;
@@ -821,11 +814,11 @@ void CAgoraManager::SetScreenPushPause(bool bPause) {
 	}
 }
 
-bool CAgoraManager::IsScreenPushPause() {
+bool CAgoraManager::IsPushScreenPause() {
 	return is_mute_screen_;
 }
 
-void CAgoraManager::SetPushScreenMicMute(bool bMute) {
+void CAgoraManager::SetPushScreenAudioMute(bool bMute) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 		int ret = rtc_engine_->muteLocalAudioStream(bMute);
@@ -835,7 +828,7 @@ void CAgoraManager::SetPushScreenMicMute(bool bMute) {
 	}
 }
 
-bool CAgoraManager::IsPushScreenMicMute() {
+bool CAgoraManager::IsPushScreenAudioMute() {
 	return is_mute_mic_;
 }
 
@@ -844,7 +837,7 @@ void CAgoraManager::OnLeaveChannel(const RtcStats& stat, conn_id_t connId) {
 
 void CAgoraManager::OnUserJoined(uid_t uid, int elapsed, conn_id_t connId) {
 	if (connId == DEFAULT_CONNECTION_ID) {
-		if (uid != screen_uid_) {
+		if (uid != screen_uid_ && uid != custom_uid_) {
 			users_in_channel_.insert(uid);
 		}
 		else {
@@ -873,7 +866,7 @@ void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNEC
 void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 	printf("[I]: onMediaDeviceChanged, deviceTypd: %d, connId: %d\n", deviceType, connId);
 	if (deviceType == 3) {
-		std::vector<CAgoraManager::CameraProg> camera_list;
+		std::vector<CAgoraManager::CameraInfo> camera_list;
 		GetCameraList(camera_list);
 		for (int i = 0; i < camera_list.size(); i++) {
 			if (current_camera_.second == camera_list[i].device_id) {
@@ -914,11 +907,11 @@ void CAgoraManager::ResetStates() {
 	users_in_channel_.clear();
 }
 
-bool CAgoraManager::StartSourceVideo()
+bool CAgoraManager::StartPushCustom()
 {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		ChannelMediaOptions op;
+	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = true;
 	op.publishCustomVideoTrack = true;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
@@ -932,11 +925,11 @@ bool CAgoraManager::StartSourceVideo()
 	return ret == 0 ? true : false;
 }
 
-bool CAgoraManager::StopPushSourceVideo()
+bool CAgoraManager::StopPushCustom()
 {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
-
-		ChannelMediaOptions op;
+	
+	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = false;
 	op.publishCustomVideoTrack = false;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
@@ -949,7 +942,7 @@ bool CAgoraManager::StopPushSourceVideo()
 	return ret ? false : true;
 }
 
-bool CAgoraManager::IsPushSourceVideo()
+bool CAgoraManager::IsPushCustom()
 {
 	return is_publish_custom_;
 }
@@ -958,7 +951,7 @@ bool CAgoraManager::PushVideoFrame(unsigned char * pData, int nW, int nH, long l
 {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::media::base::ExternalVideoFrame frame;
+	agora::media::base::ExternalVideoFrame frame;
 	frame.buffer = pData;
 	frame.format = agora::media::base::VIDEO_PIXEL_RGBA;
 	frame.height = nH;
@@ -972,7 +965,7 @@ bool CAgoraManager::PushAudioFrame(unsigned char * pData, int nbSamples, long lS
 {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::media::IAudioFrameObserver::AudioFrame frame;
+	agora::media::IAudioFrameObserver::AudioFrame frame;
 	frame.type = agora::media::IAudioFrameObserver::FRAME_TYPE_PCM16;
 	frame.avsync_type = 0;
 	frame.buffer = pData;
