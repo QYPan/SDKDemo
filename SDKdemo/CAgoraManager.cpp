@@ -443,13 +443,25 @@ void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbS
 			prog.width = item->width;
 			prog.height = item->height;
 
-			prog.iconBGRA.buffer = (const char*)&item->icon.data[0];
-			prog.iconBGRA.length = item->icon.data.size();
+			if (item->icon.data.size() > 0) {
+				prog.iconBGRA.buffer = (const char*)&item->icon.data[0];
+				prog.iconBGRA.length = item->icon.data.size();
+			}
+			else {
+				continue;
+			}
+			
 			prog.iconBGRA.width = item->icon.width;
 			prog.iconBGRA.height = item->icon.height;
 
-			prog.thumbBGRA.buffer = (const char*)&item->thumb.data[0];
-			prog.thumbBGRA.length = item->thumb.data.size();
+			if (item->thumb.data.size() > 0) {
+				prog.thumbBGRA.buffer = (const char*)&item->thumb.data[0];
+				prog.thumbBGRA.length = item->thumb.data.size();
+			}
+			else {
+				continue;
+			}
+			
 			prog.thumbBGRA.width = item->thumb.width;
 			prog.thumbBGRA.height = item->thumb.height;
 			vWindows.push_back(prog);
