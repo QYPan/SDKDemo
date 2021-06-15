@@ -311,28 +311,25 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.isMinimizeWindow = ::IsIconic(hwnd);
 
 	// 获取进程图标
-	HDC hdc = ::GetDC(hwnd);
+	HDC window_dc = ::GetWindowDC(hwnd);
 	int iconWidth, iconHeight;
 	HBITMAP hBitmap = GetProcessIconBitmap(module_name, &iconWidth, &iconHeight);
 
 	std::vector<BYTE> iconBuff;
-	if (GetBitmapRGBAData(hdc, hBitmap, iconBuff)) {
-		StretchBitmap(hdc, win_infos->iconWidth, win_infos->iconHeight, iconWidth, iconHeight,
+	if (GetBitmapRGBAData(window_dc, hBitmap, iconBuff)) {
+		StretchBitmap(window_dc, win_infos->iconWidth, win_infos->iconHeight, iconWidth, iconHeight,
 			(const char*)&iconBuff[0], info.icon.data);
 
 		info.icon.width = win_infos->iconWidth;
 		info.icon.height = win_infos->iconHeight;
 	}
 
-	ReleaseDC(hwnd, hdc);
-
+	// 获取窗口缩略图
 	uint8_t* thumbdata = NULL;
 	uint32_t width, height;
 	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
-		HDC window_dc = ::GetWindowDC(hwnd);
 		StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height, 
 			(const char*)thumbdata, info.thumb.data);
-		::ReleaseDC(hwnd, window_dc);
 		
 		info.thumb.width = win_infos->fillWidth;
 		info.thumb.height = win_infos->fillHeight;
@@ -340,7 +337,7 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 		delete[] thumbdata;
 	}
 	
-	
+	ReleaseDC(hwnd, window_dc);
 
     auto windows = &win_infos->windows;
     auto itr = windows->find(info.moduleName);
