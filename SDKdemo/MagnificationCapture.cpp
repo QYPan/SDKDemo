@@ -2,7 +2,7 @@
 #include "MagnificationCapture.h"
 
 #include <iostream>
-//#include "SimpleWindow.h"
+#include "SimpleWindow.h"
 
 #define ROUND4(width) (((width-1)/4+1)*4)
 #define APP_NAME _T("plug_in_screenshot_win")
@@ -231,9 +231,9 @@ void MagnificationCapture::OnCaptured(void * data, const MAGIMAGEHEADER & header
 	cache_img.resize(header.cbSize);
 	memcpy(&cache_img[0], data, header.cbSize);
 
-	//static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
+	static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
 
-	HWND hWnd = NULL; // pImageWnd->GetView();
+	HWND hWnd = pImageWnd->GetView();
 	HBITMAP hBitmap = ::CreateBitmap(header.width, header.height, 1, 32, data);
 	HDC hWndDC = ::GetDC(hWnd);
 	HDC hMemDc = ::CreateCompatibleDC(hWndDC);

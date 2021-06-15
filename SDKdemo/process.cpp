@@ -323,50 +323,6 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 	return true;
 }
 
-bool  GetPictureFromHWND(HWND hWnd, int& nWidth, int& nHeight, std::vector<BYTE>& imagedata)
-{
-	RECT rcTarget;
-	::GetClientRect(hWnd, &rcTarget);
-	nWidth = rcTarget.right - rcTarget.left;
-	nHeight = rcTarget.bottom - rcTarget.top;
-
-	HDC hDC = ::GetDC(hWnd);
-	HDC hCompatibleDC = ::CreateCompatibleDC(hDC);
-	HBITMAP hCompatibleBitmap = ::CreateCompatibleBitmap(hDC, nWidth, nHeight);
-
-	HBITMAP hOldBitmap = (HBITMAP)SelectObject(hCompatibleDC, hCompatibleBitmap);
-	//::BitBlt(hCompatibleDC, 0, 0, nWidth, nHeight, hDC, 0, 0, SRCCOPY);
-	PrintWindow(hWnd, hCompatibleDC, 0);
-
-	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
-
-	/*TCHAR* filename = _T("test.bmp");
-	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
-
-	struct { BITMAPINFO info; RGBQUAD moreColors[255]; } fbi = { 0 };
-	BITMAPINFOHEADER &bi = fbi.info.bmiHeader;
-	bi.biSize = sizeof(BITMAPINFOHEADER);
-	GetDIBits(hCompatibleDC, hCompatibleBitmap, 0, 0, NULL, &fbi.info, DIB_RGB_COLORS);
-
-	static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage11");
-
-	HDC hViewDC = ::GetDC(pImageWnd1->GetView());
-	SetStretchBltMode(hViewDC, HALFTONE);
-	::StretchBlt(hViewDC, 0, 0, 1280, 720, hDC, 0, 0, nWidth, nHeight, SRCCOPY);
-	ReleaseDC(pImageWnd1->GetView(), hViewDC);
-
-	//::BitBlt(::GetDC(pImageWnd1->GetView()), 0, 0, nWidth, nHeight, hCompatibleDC, 0, 0, SRCCOPY);
-	Sleep(3000);
-	
-	
-	SelectObject(hCompatibleDC, hOldBitmap);
-	::DeleteObject(hCompatibleBitmap);
-	::DeleteObject(hCompatibleDC);
-	::ReleaseDC(hWnd, hDC);
-
-	return ret;
-}
-
 bool GetDesktopAREAData(RECT & rcArea, std::vector<BYTE>& imagedata, int fillWidth, int fillHeight)
 {
 	int realWidth = rcArea.right - rcArea.left;
@@ -386,9 +342,9 @@ bool GetDesktopAREAData(RECT & rcArea, std::vector<BYTE>& imagedata, int fillWid
 	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
 
 
-	static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
+	/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
 	::BitBlt(::GetDC(pImageWnd1->GetView()), 0, 0, fillWidth, fillHeight, hCompatibleDC, 0, 0, SRCCOPY);
-	Sleep(3000);
+	Sleep(3000);*/
 
 	SelectObject(hCompatibleDC, hOldBitmap);
 	::DeleteObject(hCompatibleBitmap);

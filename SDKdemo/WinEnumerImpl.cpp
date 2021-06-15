@@ -16,6 +16,8 @@
 
 using namespace app::utils;
 
+#pragma warning(disable:4996)
+
 namespace app {
 namespace utils {
 
@@ -120,6 +122,127 @@ BOOL IsInvisibleWin10BackgroundAppWindow(HWND hWnd) {
   return false;
 }
 
+static bool GetOsVersion(int* major, int* minor, int* build) {
+	OSVERSIONINFO info = { 0 };
+	info.dwOSVersionInfoSize = sizeof(info);
+	if (GetVersionEx(&info)) {
+		if (major) *major = info.dwMajorVersion;
+		if (minor) *minor = info.dwMinorVersion;
+		if (build) *build = info.dwBuildNumber;
+		return true;
+	}
+	return false;
+}
+
+enum WindowsMajorVersions {
+	kWindows2000 = 5,
+	kWindowsVista = 6,
+	kWindows10 = 10,
+};
+
+static bool IsWindows8OrLater() {
+	int major = 0, minor = 0;
+	typedef void(__stdcall * NTPROC)(DWORD*, DWORD*, DWORD*);
+	HINSTANCE hinst = LoadLibrary(L"ntdll.dll");
+	if (hinst) {
+		NTPROC proc = (NTPROC)GetProcAddress(hinst, "RtlGetNtVersionNumbers");
+		if (proc) {
+			DWORD dwMajor, dwMinor, dwBuildNumber;
+			proc(&dwMajor, &dwMinor, &dwBuildNumber);
+			dwBuildNumber &= 0xffff;
+			if ((dwMajor > kWindowsVista) || (dwMajor == kWindowsVista && dwMinor > 1)) {
+				FreeLibrary(hinst);
+				return true;
+			}
+			else {
+				FreeLibrary(hinst);
+				return false;
+			}
+		}
+		else {
+			FreeLibrary(hinst);
+			return (GetOsVersion(&major, &minor, nullptr) &&
+				((major > kWindowsVista) || (major == kWindowsVista && minor > 1)));
+		}
+	}
+	else {
+		return (GetOsVersion(&major, &minor, nullptr) &&
+			((major > kWindowsVista) || (major == kWindowsVista && minor > 1)));
+	}
+}
+
+static bool GetWindowImageGDI(HWND window, uint8_t** data, uint32_t &width, uint32_t &height) {
+	RECT rect;
+	if (!GetWindowRect(window, &rect)) {
+		return false;
+	}
+	HDC window_dc = GetWindowDC(window);
+	if (!window_dc) {
+		return false;
+	}
+
+	width = rect.right - rect.left;
+	height = rect.bottom - rect.top;
+
+	int bytes_per_row = width * 4;
+
+	// Describe a device independent bitmap (DIB) that is the size of the desktop.
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biHeight = -(rect.bottom - rect.top);
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+	bmi.bmiHeader.biSizeImage = bytes_per_row * height;
+
+	HANDLE section_handle = nullptr;
+	uint8_t *bitmap_data = nullptr;
+	HBITMAP bitmap =
+		CreateDIBSection(window_dc, &bmi, DIB_RGB_COLORS, (void **)&bitmap_data, section_handle, 0);
+	if (!bitmap) {
+		return false;
+	}
+
+	HDC mem_dc = CreateCompatibleDC(window_dc);
+	HGDIOBJ previous_object = SelectObject(mem_dc, bitmap);
+	if (!previous_object || previous_object == HGDI_ERROR) {
+		return false;
+	}
+	bool result;
+	if (IsWindows8OrLater()) {
+		result = PrintWindow(window, mem_dc, 2);
+	}
+	else {
+		result = PrintWindow(window, mem_dc, 0);
+	}
+	if (!result) {
+		result = (BitBlt(mem_dc, 0, 0, width, height, window_dc, 0, 0,
+			SRCCOPY | CAPTUREBLT) != FALSE);
+	}
+	if (!result) {
+		return false;
+	}
+
+	/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
+	HDC hWndDC = ::GetDC(pImageWnd1->GetView());
+	SetStretchBltMode(hWndDC, HALFTONE);
+	::StretchBlt(hWndDC, 0, 0, 800, 600, mem_dc, 0, 0, width, height, SRCCOPY);
+	ReleaseDC(pImageWnd1->GetView(), hWndDC);
+	Sleep(1000);*/
+
+	*data = new uint8_t[bmi.bmiHeader.biSizeImage];
+	memcpy(*data, bitmap_data, bmi.bmiHeader.biSizeImage);
+	if (bitmap) {
+		DeleteObject(bitmap);
+	}
+	// Select back the previously selected object to that the device contect
+	// could be destroyed independently of the bitmap if needed.
+	SelectObject(mem_dc, NULL);
+	DeleteDC(mem_dc);
+	ReleaseDC(window, window_dc);
+	return true;
+}
+
 BOOL WINAPI WindowEnumCallback(HWND hwnd,
   LPARAM data) {
 
@@ -194,12 +317,25 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	::ReleaseDC(hwnd, hDC);
 
 	// ªÒ»°Àı¬‘Õº
-	static MagnificationCapture magCapture;
+	/*static MagnificationCapture magCapture;
 	RECT wndRect;
 	GetWindowRect(hwnd, &wndRect);
 	magCapture.CaptureFrame(hwnd, wndRect);
 	if (!magCapture.GetFrameInfo(info.thumb.width, info.thumb.height, info.thumb.data))
-		break;
+		break;*/
+
+	uint8_t* thumbdata = NULL;
+	uint32_t width, height;
+	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
+		info.thumb.width = width;
+		info.thumb.height = height;
+
+		int imgsize = width * 4 * height;
+		info.thumb.data.resize(imgsize);
+		memcpy(&info.thumb.data[0], thumbdata, imgsize);
+		delete[] thumbdata;
+	}
+	
 
     auto windows = (std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>*)data;
     auto itr = windows->find(info.moduleName);
