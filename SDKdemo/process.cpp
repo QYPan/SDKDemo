@@ -11,7 +11,7 @@
 #include <MMSystem.h>
 #include <dwmapi.h>
 
-#include "SimpleWindow.h"
+//#include "SimpleWindow.h"
 
 #pragma comment(lib, "Dwmapi.lib")
 
@@ -338,6 +338,22 @@ bool GetDesktopAREAData(RECT & rcArea, std::vector<BYTE>& imagedata, int fillWid
 
 	bool ret = GetBitmapRGBAData(hCompatibleDC, hCompatibleBitmap, imagedata);
 
+	int width = fillWidth;
+	int height = fillHeight;
+	uint8_t* bitmap_data = imagedata.data();
+	uint8_t* temp = new uint8_t[width * 4];
+	for (int row = height >> 1; row >= 0; row--) {
+		memcpy(temp, bitmap_data + width * 4 * row, width * 4);
+		memcpy(bitmap_data + width * 4 * row, bitmap_data + width * 4 * (height - row - 1), width * 4);
+		memcpy(bitmap_data + width * 4 * (height - row - 1), temp, width * 4);
+	}
+	delete[] temp;
+
+	int imageSize = width * 4 * height;
+	for (int i = 0; i < imageSize; i += 4) {
+		bitmap_data[i + 3] = 0xFF;
+	}
+
 	/*TCHAR* filename = _T("test.bmp");
 	SaveToDisk(filename, hCompatibleBitmap, imagedata);*/
 
@@ -408,6 +424,12 @@ bool StretchBitmap(HDC hDC, int dstW, int dstH, int srcW, int srcH, const char *
 		outdata.resize(dstW * 4 * dstH);
 		if (!GetBitmapRGBAData(mem_dc, mem_bitmap, outdata))
 			break;
+
+		int imageSize = dstW * 4 * dstH;
+		BYTE* bitmap_data = outdata.data();
+		for (int i = 0; i < imageSize; i += 4) {
+			bitmap_data[i + 3] = 0xFF;
+		}
 
 		bSucc = true;
 	} while (false);

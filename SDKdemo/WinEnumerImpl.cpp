@@ -11,8 +11,8 @@
 #include <atlstr.h>
 
 #include "process.h"
-#include "SimpleWindow.h"
-#include "MagnificationCapture.h"
+//#include "SimpleWindow.h"
+//#include "MagnificationCapture.h"
 
 using namespace app::utils;
 
@@ -223,12 +223,13 @@ static bool GetWindowImageGDI(HWND window, uint8_t** data, uint32_t &width, uint
 		return false;
 	}
 
-	/*static SimpleWindow* pImageWnd1 = new SimpleWindow("ScaleImage112");
-	HDC hWndDC = ::GetDC(pImageWnd1->GetView());
-	SetStretchBltMode(hWndDC, HALFTONE);
-	::StretchBlt(hWndDC, 0, 0, 800, 600, mem_dc, 0, 0, width, height, SRCCOPY);
-	ReleaseDC(pImageWnd1->GetView(), hWndDC);
-	Sleep(1000);*/
+	uint8_t* temp = new uint8_t[width * 4];
+	for (int row = height >> 1; row >= 0; row--) {
+		memcpy(temp, bitmap_data + width * 4 * row, width * 4);
+		memcpy(bitmap_data + width * 4 * row, bitmap_data + width * 4 * (height - row - 1), width * 4);
+		memcpy(bitmap_data + width * 4 * (height - row - 1), temp, width * 4);
+	}
+	delete[] temp;
 
 	*data = new uint8_t[bmi.bmiHeader.biSizeImage];
 	memcpy(*data, bitmap_data, bmi.bmiHeader.biSizeImage);
