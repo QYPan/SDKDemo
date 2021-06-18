@@ -64,7 +64,11 @@ bool GetDesktopAREAData(RECT& rcArea, std::vector<BYTE>& imagedata, int maxWidth
 
 void SaveToDisk(const TCHAR* filename, HBITMAP hBitmap, std::vector<BYTE>& imagedata);
 
+void SaveToDisk1(const TCHAR * filename, int width, int height, int widthBytes, BYTE* imagedata);
+
 bool StretchBitmap(HDC hDC, int dstW, int dstH, int srcW, int srcH, const char* srcdata, std::vector<BYTE>& outdata);
+
+bool GetWindowImageGDI(HWND window, uint8_t** data, uint32_t &width, uint32_t &height);
 
 }
 }

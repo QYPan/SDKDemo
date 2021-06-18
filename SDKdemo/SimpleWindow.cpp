@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "SimpleWindow.h"
+#include "process.h"
+#include "WinEnumerImpl.h"
 
 const char kSimpleWindowClass[] = "AEC858EC-E51C-4211-A464-CE538AA27AA6";
 
@@ -21,7 +23,7 @@ SimpleWindow::SimpleWindow(std::string window_title) : hwnd_(nullptr), stop_(fal
   HANDLE created = CreateEvent(NULL, FALSE, FALSE, NULL);
 
   looper_ = std::unique_ptr<std::thread>(new std::thread([this, window_title, &created] {
-    hwnd_ = CreateWindowA(kSimpleWindowClass, window_title.c_str(), WS_OVERLAPPEDWINDOW, 0, 0,
+    hwnd_ = CreateWindowA(kSimpleWindowClass, window_title.c_str(), WS_POPUP, 0, 0,
                           static_cast<int>(1280), static_cast<int>(720), NULL, NULL, NULL, NULL);
 
     SetEvent(created);
@@ -78,6 +80,21 @@ LRESULT WINAPI SimpleWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPAR
   if (msg == WM_DESTROY || (msg == WM_CHAR && wparam == VK_RETURN)) {
     PostQuitMessage(0);
     return 0;
+  }
+  else if (msg == WM_KEYDOWN && wparam == VK_DELETE) {
+	  app::utils::WindowEnumer::IMAGE_INFO* info = (app::utils::WindowEnumer::IMAGE_INFO*)lparam;
+	
+	  HDC window_dc = GetDC(hwnd);
+	  uint8_t* thumbdata = NULL;
+	  uint32_t width, height;
+	  if (app::utils::GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
+		  app::utils::StretchBitmap(window_dc, info->width, info->height, width, height,
+			  (const char*)thumbdata, info->data);
+		  delete[] thumbdata;
+	  }
+
+	 // app::utils::SaveToDisk1(L"test22.bmp", width, height, width*4, outData.data());
+	  ReleaseDC(hwnd, window_dc);
   }
 
   return DefWindowProcA(hwnd, msg, wparam, lparam);

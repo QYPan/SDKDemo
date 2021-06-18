@@ -11,12 +11,11 @@
 #include <atlstr.h>
 
 #include "process.h"
-//#include "SimpleWindow.h"
-//#include "MagnificationCapture.h"
+#include "SimpleWindow.h"
 
 using namespace app::utils;
 
-#pragma warning(disable:4996)
+
 
 namespace app {
 namespace utils {
@@ -122,127 +121,7 @@ BOOL IsInvisibleWin10BackgroundAppWindow(HWND hWnd) {
   return false;
 }
 
-static bool GetOsVersion(int* major, int* minor, int* build) {
-	OSVERSIONINFO info = { 0 };
-	info.dwOSVersionInfoSize = sizeof(info);
-	if (GetVersionEx(&info)) {
-		if (major) *major = info.dwMajorVersion;
-		if (minor) *minor = info.dwMinorVersion;
-		if (build) *build = info.dwBuildNumber;
-		return true;
-	}
-	return false;
-}
 
-enum WindowsMajorVersions {
-	kWindows2000 = 5,
-	kWindowsVista = 6,
-	kWindows10 = 10,
-};
-
-static bool IsWindows8OrLater() {
-	int major = 0, minor = 0;
-	typedef void(__stdcall * NTPROC)(DWORD*, DWORD*, DWORD*);
-	HINSTANCE hinst = LoadLibrary(L"ntdll.dll");
-	if (hinst) {
-		NTPROC proc = (NTPROC)GetProcAddress(hinst, "RtlGetNtVersionNumbers");
-		if (proc) {
-			DWORD dwMajor, dwMinor, dwBuildNumber;
-			proc(&dwMajor, &dwMinor, &dwBuildNumber);
-			dwBuildNumber &= 0xffff;
-			if ((dwMajor > kWindowsVista) || (dwMajor == kWindowsVista && dwMinor > 1)) {
-				FreeLibrary(hinst);
-				return true;
-			}
-			else {
-				FreeLibrary(hinst);
-				return false;
-			}
-		}
-		else {
-			FreeLibrary(hinst);
-			return (GetOsVersion(&major, &minor, nullptr) &&
-				((major > kWindowsVista) || (major == kWindowsVista && minor > 1)));
-		}
-	}
-	else {
-		return (GetOsVersion(&major, &minor, nullptr) &&
-			((major > kWindowsVista) || (major == kWindowsVista && minor > 1)));
-	}
-}
-
-static bool GetWindowImageGDI(HWND window, uint8_t** data, uint32_t &width, uint32_t &height) {
-	RECT rect;
-	if (!GetWindowRect(window, &rect)) {
-		return false;
-	}
-	HDC window_dc = GetWindowDC(window);
-	if (!window_dc) {
-		return false;
-	}
-
-	width = rect.right - rect.left;
-	height = rect.bottom - rect.top;
-
-	int bytes_per_row = width * 4;
-
-	// Describe a device independent bitmap (DIB) that is the size of the desktop.
-	BITMAPINFO bmi = {};
-	bmi.bmiHeader.biHeight = -(rect.bottom - rect.top);
-	bmi.bmiHeader.biWidth = width;
-	bmi.bmiHeader.biPlanes = 1;
-	bmi.bmiHeader.biBitCount = 32;
-	bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-	bmi.bmiHeader.biSizeImage = bytes_per_row * height;
-
-	HANDLE section_handle = nullptr;
-	uint8_t *bitmap_data = nullptr;
-	HBITMAP bitmap =
-		CreateDIBSection(window_dc, &bmi, DIB_RGB_COLORS, (void **)&bitmap_data, section_handle, 0);
-	if (!bitmap) {
-		return false;
-	}
-
-	HDC mem_dc = CreateCompatibleDC(window_dc);
-	HGDIOBJ previous_object = SelectObject(mem_dc, bitmap);
-	if (!previous_object || previous_object == HGDI_ERROR) {
-		return false;
-	}
-	bool result;
-	if (IsWindows8OrLater()) {
-		result = PrintWindow(window, mem_dc, 2);
-	}
-	else {
-		result = PrintWindow(window, mem_dc, 0);
-	}
-	if (!result) {
-		result = (BitBlt(mem_dc, 0, 0, width, height, window_dc, 0, 0,
-			SRCCOPY | CAPTUREBLT) != FALSE);
-	}
-	if (!result) {
-		return false;
-	}
-
-	uint8_t* temp = new uint8_t[width * 4];
-	for (int row = height >> 1; row >= 0; row--) {
-		memcpy(temp, bitmap_data + width * 4 * row, width * 4);
-		memcpy(bitmap_data + width * 4 * row, bitmap_data + width * 4 * (height - row - 1), width * 4);
-		memcpy(bitmap_data + width * 4 * (height - row - 1), temp, width * 4);
-	}
-	delete[] temp;
-
-	*data = new uint8_t[bmi.bmiHeader.biSizeImage];
-	memcpy(*data, bitmap_data, bmi.bmiHeader.biSizeImage);
-	if (bitmap) {
-		DeleteObject(bitmap);
-	}
-	// Select back the previously selected object to that the device contect
-	// could be destroyed independently of the bitmap if needed.
-	SelectObject(mem_dc, NULL);
-	DeleteDC(mem_dc);
-	ReleaseDC(window, window_dc);
-	return true;
-}
 
 BOOL WINAPI WindowEnumCallback(HWND hwnd,
   LPARAM data) {
@@ -310,6 +189,8 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	info.sourceName = CT2A(window_name, CP_UTF8);
 	info.moduleName = CT2A(module_name);
 	info.isMinimizeWindow = ::IsIconic(hwnd);
+	info.thumb.width = win_infos->fillWidth;
+	info.thumb.height = win_infos->fillHeight;
 
 	// 获取进程图标
 	HDC window_dc = ::GetWindowDC(hwnd);
@@ -325,18 +206,18 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 		info.icon.height = win_infos->iconHeight;
 	}
 
+	static SimpleWindow* simplewnd = new SimpleWindow("background");
+	DrawThumbToWindow(simplewnd->GetView(), hwnd, info.thumb.width, info.thumb.height);
+	SendMessage(simplewnd->GetView(), WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
+
 	// 获取窗口缩略图
-	uint8_t* thumbdata = NULL;
+	/*uint8_t* thumbdata = NULL;
 	uint32_t width, height;
 	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
 		StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height, 
 			(const char*)thumbdata, info.thumb.data);
-		
-		info.thumb.width = win_infos->fillWidth;
-		info.thumb.height = win_infos->fillHeight;
-
 		delete[] thumbdata;
-	}
+	}*/
 	
 	ReleaseDC(hwnd, window_dc);
 
