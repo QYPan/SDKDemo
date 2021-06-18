@@ -254,7 +254,6 @@ private:
 
 	int current_recording_mode_ = 0;
 
-	typedef std::pair<int, std::string> DeviceInfo;
-	DeviceInfo current_camera_ = DeviceInfo(0, "");
+	CameraInfo current_camera_ = CameraInfo{0, "", ""};
 	bool initialized_ = false;
 };

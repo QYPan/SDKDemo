@@ -278,7 +278,7 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 		rtc_engine_->enableLocalAudio(true);
 	}
 
-	SetPushCamera(current_camera_.first);
+	SetPushCamera(current_camera_.idx);
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
@@ -622,7 +622,7 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 	for (int i = 0; i < camera_list.size(); i++) {
 		if (nCamID == camera_list[i].idx) {
 			video_device_manager->setDevice(camera_list[i].device_id.c_str());
-			current_camera_ = DeviceInfo(i, camera_list[i].device_id);
+			current_camera_ = CameraInfo{i, camera_list[i].device_id, ""};
 			break;
 		}
 	}
@@ -885,7 +885,8 @@ void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 		std::vector<CAgoraManager::CameraInfo> camera_list;
 		GetCameraList(camera_list);
 		for (int i = 0; i < camera_list.size(); i++) {
-			if (current_camera_.second == camera_list[i].device_id) {
+			if (current_camera_.device_id == camera_list[i].device_id) {
+				current_camera_.idx = i;
 				StartPushCamera();
 				return;
 			}
