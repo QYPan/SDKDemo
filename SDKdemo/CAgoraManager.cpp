@@ -200,7 +200,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 bool CAgoraManager::LeaveChannel() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->leaveChannel();
+	int ret = rtc_engine_->leaveChannel();
 	printf("[I]: leaveChannel, ret: %d\n", ret);
 
 	if (is_enable_video_observer_ && video_frame_observer_) {
@@ -215,7 +215,7 @@ bool CAgoraManager::LeaveChannel() {
 void CAgoraManager::SetCameraShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		VideoCanvas vc;
+	VideoCanvas vc;
 	vc.view = hwnd;
 	vc.renderMode = renderMode;
 	vc.sourceType = VIDEO_SOURCE_CAMERA;
@@ -229,7 +229,7 @@ void CAgoraManager::SetCameraShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE
 void CAgoraManager::SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		VideoCanvas vc;
+	VideoCanvas vc;
 	vc.view = hwnd;
 	vc.uid = uid;
 	vc.renderMode = renderMode;
@@ -240,9 +240,10 @@ void CAgoraManager::SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd, agora::m
 void CAgoraManager::SetWindowDesktopShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		VideoCanvas vc;
+	VideoCanvas vc;
 	vc.view = hwnd;
 	vc.renderMode = renderMode;
+	vc.mirrorMode = agora::rtc::VIDEO_MIRROR_MODE_DISABLED;
 	vc.sourceType = VIDEO_SOURCE_SCREEN;
 	int ret = rtc_engine_->setupLocalVideo(vc);
 	if (ret == 0) {
@@ -254,7 +255,7 @@ void CAgoraManager::SetWindowDesktopShowHwnd(HWND hwnd, agora::media::base::REND
 void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFrameRate) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		VideoEncoderConfiguration cfg;
+	VideoEncoderConfiguration cfg;
 	cfg.dimensions.width = nPushW;
 	cfg.dimensions.height = nPushH;
 	cfg.frameRate = nPushFrameRate;
