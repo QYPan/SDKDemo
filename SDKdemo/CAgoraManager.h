@@ -204,7 +204,7 @@ public:
 	void OnUserJoined(uid_t uid, int elapsed, conn_id_t connId);
 	// 远端用户离开
 	void OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId);
-	// 错误回调（不推荐使用，由以下回调单独提供错误信息）
+	// 错误回调(不推荐使用，由以下回调单独提供错误信息)
 	// onConnectionStateChanged
 	// onMediaDeviceChanged
 	// onLocalVideoStateChanged
@@ -253,6 +253,8 @@ private:
 	bool is_joined_ = false;
 	bool is_publish_camera_ = false;
 	bool is_publish_screen_ = false;
+	bool is_publish_camera_audio_ = false;
+	bool is_publish_screen_audio_ = false;
 	bool is_mute_camera_ = false;
 	bool is_mute_screen_ = false;
 	bool is_mute_mic_ = false;

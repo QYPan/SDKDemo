@@ -276,22 +276,24 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 
 	if (bWithMic) {
 		rtc_engine_->enableLocalAudio(true);
+		is_publish_camera_audio_ = true;
 	}
 
 	SetPushCamera(current_camera_.idx);
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
-	int ret1 = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
-	printf("[I]: updateChannelMediaOptions(publish camera), ret: %d\n", ret1);
+	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
 
-	if (ret1 == 0) {
+	if (ret == 0) {
 		is_publish_camera_ = true;
 	}
 
 	rtc_engine_->startPreview();
 
-	return ret1 ? false : true;
+	printf("[I]: StartPushCamera, ret: %d\n", ret);
+
+	return ret ? false : true;
 }
 
 bool CAgoraManager::StopPushCamera() {
@@ -302,16 +304,25 @@ bool CAgoraManager::StopPushCamera() {
 		return true;
 	}
 
-	int ret = rtc_engine_->enableLocalVideo(false);
-	int ret1 = rtc_engine_->enableLocalAudio(false);
+	ChannelMediaOptions op;
+	
+	rtc_engine_->enableLocalVideo(false);
+	if (is_publish_camera_audio_) {
+		rtc_engine_->enableLocalAudio(false);
+		op.publishAudioTrack = false;
+		is_publish_camera_audio_ = false;
+	}
 
-	printf("[I]: StopPushCamera, ret: %d, ret1: %d\n", ret, ret1);
+	op.publishCameraTrack = false;
+	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
 
-	if (ret == 0 && ret1 == 0) {
+	if (ret == 0) {
 		is_publish_camera_ = false;
 	}
 
-	return ((ret == 0 && ret1 == 0) ? false : true);
+	printf("[I]: StopPushCamera, ret: %d\n", ret);
+
+	return (ret ? false : true);
 }
 
 bool CAgoraManager::IsPushCamera() {
@@ -325,7 +336,7 @@ void CAgoraManager::UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFram
 	param_.dimensions.height = nPushH;
 	param_.frameRate = nPushFrameRate;
 	int ret = rtc_engine_->updateScreenCaptureParameters(param_);
-	printf("[I]: updateScreenCaptureParameters, ret: %d\n", ret);
+	printf("[I]: UpdatePushScreenConfig, ret: %d\n", ret);
 }
 
 bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
@@ -359,25 +370,26 @@ bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 
 		if (bWithMic) {
 			rtc_engine_->enableLocalAudio(true);
+			is_publish_screen_audio_ = true;
 		}
 
 		ret1 = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
-		printf("[I]: updateChannelMediaOptions, ret: %d\n", ret1);
 		is_publish_screen_ = true;
 	}
 
 	rtc_engine_->startPreview();
 
-	return ret ? false : true;
+	printf("[I]: StartPushScreen, ret: %d\n", (ret == 0 && ret1 == 0));
+
+	return (ret || ret1) ? false : true;
 }
 
 void CAgoraManager::SetPushDesktop(int nScreenID,
 	int x, int y, int w, int h) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-
 	std::vector<DesktopInfo> desktops;
-	GetDesktopList(desktops, 600, 400);
+	GetDesktopList(desktops, 300, 300);
 
 	if (nScreenID < 0 || nScreenID >= desktops.size()) {
 		printf("[E]: SetPushDesktop, desktop_size: %d, screen_id: %d\n", desktops.size(), nScreenID);
@@ -398,6 +410,8 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 	if (IsPushScreen()) {
 		rtc_engine_->updateScreenCaptureRegion(region_rect_);
 	}
+
+	printf("[E]: SetPushDesktop, screen_id: %d, is_pushed: %d\n", nScreenID, IsPushScreen());
 }
 
 bool CAgoraManager::StopPushScreen() {
@@ -408,9 +422,24 @@ bool CAgoraManager::StopPushScreen() {
 		return true;
 	}
 
-	int ret = rtc_engine_->stopScreenCapture();
-	printf("[I]: stopScreenCapture, ret: %d\n", ret);
+	rtc_engine_->stopScreenCapture();
+
+	ChannelMediaOptions op;
+
+	if (is_publish_screen_audio_) {
+		rtc_engine_->enableLocalAudio(false);
+		op.publishAudioTrack = false;
+		is_publish_screen_audio_ = false;
+	}
+
+	op.publishScreenTrack = false;
+
+	int ret = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
+
 	is_publish_screen_ = false;
+	share_win_ = 0;
+
+	printf("[I]: StopPushScreen, ret: %d\n", ret);
 
 	return ret ? false : true;
 }
@@ -422,6 +451,8 @@ void CAgoraManager::SetPushWindow(HWND hwnd,
 	region_rect_.y = y;
 	region_rect_.width = w;
 	region_rect_.height = h;
+
+	printf("[I]: SetPushWindow, hwnd: %d\n", hwnd);
 }
 
 void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH, int nIconSizeW, int nIconSizeH) {
@@ -927,6 +958,8 @@ void CAgoraManager::ResetStates() {
 	is_publish_camera_ = false;
 	is_publish_screen_ = false;
 	is_publish_custom_ = false;
+	is_publish_camera_audio_ = false;
+	is_publish_screen_audio_ = false;
 	is_mute_camera_ = false;
 	is_mute_screen_ = false;
 	is_mute_mic_ = false;
