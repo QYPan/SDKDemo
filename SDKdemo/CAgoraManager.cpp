@@ -897,6 +897,30 @@ void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 		StopPushCamera();
 	}
 }
+
+void CAgoraManager::onLocalVideoStateChanged(LOCAL_VIDEO_STREAM_STATE state, LOCAL_VIDEO_STREAM_ERROR error, conn_id_t connId) {
+	printf("[I]: onLocalVideoStateChanged, state: %d, error: %d, connId: %d\n", state, error, connId);
+}
+
+void CAgoraManager::onLocalAudioStateChanged(LOCAL_AUDIO_STREAM_STATE state, LOCAL_AUDIO_STREAM_ERROR error, conn_id_t connId) {
+	printf("[I]: onLocalAudioStateChanged, state: %d, error: %d, connId: %d\n", state, error, connId);
+}
+
+void CAgoraManager::onRemoteVideoStateChanged(uid_t uid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed, conn_id_t connId) {
+	printf("[I]: onRemoteVideoStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d\n", uid, state, reason, elapsed, connId);
+}
+
+void CAgoraManager::onRemoteAudioStateChanged(uid_t uid, REMOTE_AUDIO_STATE state, REMOTE_AUDIO_STATE_REASON reason, int elapsed, conn_id_t connId) {
+	printf("[I]: onRemoteAudioStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d\n", uid, state, reason, elapsed, connId);
+}
+
+void CAgoraManager::onFirstLocalVideoFramePublished(int elapsed, conn_id_t connId) {
+	printf("[I]: onFirstLocalVideoFramePublished, elapsed: %d, connId: %d\n", elapsed, connId);
+}
+
+void CAgoraManager::onFirstLocalAudioFramePublished(int elapsed, conn_id_t connId) {
+	printf("[I]: onFirstLocalAudioFramePublished, elapsed: %d, connId: %d\n", elapsed, connId);
+}
 	
 void CAgoraManager::ResetStates() {
 	is_joined_ = false;

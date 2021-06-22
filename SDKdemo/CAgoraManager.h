@@ -197,13 +197,39 @@ public:
 	void EnableVideoFrameObserver(bool enable);
 
 	// Rtc event
+	// 加入房间成功
 	void OnJoinChannelSuccess(const char* channel, uid_t uid, int elapsed, conn_id_t connId);
 	void OnLeaveChannel(const RtcStats& stat, conn_id_t connId);
+	// 远端用户加入
 	void OnUserJoined(uid_t uid, int elapsed, conn_id_t connId);
+	// 远端用户离开
 	void OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId);
+	// 错误回调（不推荐使用，由以下回调单独提供错误信息）
+	// onConnectionStateChanged
+	// onMediaDeviceChanged
+	// onLocalVideoStateChanged
+	// onLocalAudioStateChanged
+	// onRemoteVideoStateChanged
+	// onRemoteAudioStateChanged
+	// onFirstLocalVideoFramePublished
+	// onFirstLocalAudioFramePublished
 	void onError(int err, const char* msg, conn_id_t connId);
+	// 网络状态回调
 	void onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId);
+	// 设备变化回调
 	void onMediaDeviceChanged(int deviceType, conn_id_t connId);
+	// 本端视频状态回调
+	void onLocalVideoStateChanged(LOCAL_VIDEO_STREAM_STATE state, LOCAL_VIDEO_STREAM_ERROR error, conn_id_t connId);
+	// 本端音频状态回调
+	void onLocalAudioStateChanged(LOCAL_AUDIO_STREAM_STATE state, LOCAL_AUDIO_STREAM_ERROR error, conn_id_t connId);
+	// 远端视频状态回调
+	void onRemoteVideoStateChanged(uid_t uid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed, conn_id_t connId);
+	// 远端音频状态回调
+	void onRemoteAudioStateChanged(uid_t uid, REMOTE_AUDIO_STATE state, REMOTE_AUDIO_STATE_REASON reason, int elapsed, conn_id_t connId);
+	// 视频推流成功回调
+	void onFirstLocalVideoFramePublished(int elapsed, conn_id_t connId);
+	// 音频推流成功回调
+	void onFirstLocalAudioFramePublished(int elapsed, conn_id_t connId);
 
 private:
 	void ResetStates();
