@@ -316,8 +316,11 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 	prop.rcDestination = rcDest;
 	prop.rcSource = { 0, 0, sw, sh };
 
+	//::ShowWindow(hDestWnd, SW_SHOW);
+	//::ShowWindow(hDestWnd, SW_HIDE);
 	::SetWindowPos(hDestWnd, NULL, -3000, -3000, destWidth, destHeight, SWP_NOACTIVATE);
 	HRESULT hr = ::DwmUpdateThumbnailProperties(thumbNail, &prop);
+	
 	if (FAILED(hr))
 		return false;
 
@@ -465,6 +468,18 @@ enum WindowsMajorVersions {
 	kWindows10 = 10,
 };
 
+bool IsWindows7OrLater() {
+	int major, minor;
+	return (GetOsVersion(&major, &minor, nullptr) &&
+		(major > kWindowsVista || (major == kWindowsVista && minor >= 1)));
+}
+
+bool IsWindowsXpOrLater() {
+	int major, minor;
+	return (GetOsVersion(&major, &minor, nullptr) &&
+		(major >= kWindowsVista || (major == kWindows2000 && minor >= 1)));
+}
+
 bool IsWindows8OrLater() {
 	int major = 0, minor = 0;
 	typedef void(__stdcall * NTPROC)(DWORD*, DWORD*, DWORD*);
@@ -493,6 +508,35 @@ bool IsWindows8OrLater() {
 	else {
 		return (GetOsVersion(&major, &minor, nullptr) &&
 			((major > kWindowsVista) || (major == kWindowsVista && minor > 1)));
+	}
+}
+
+bool IsWindows10OrLater(unsigned int buildNumber) {
+	int major = 0;
+	typedef void(__stdcall * NTPROC)(DWORD*, DWORD*, DWORD*);
+	HINSTANCE hinst = LoadLibrary(L"ntdll.dll");
+	if (hinst) {
+		NTPROC proc = (NTPROC)GetProcAddress(hinst, "RtlGetNtVersionNumbers");
+		if (proc) {
+			DWORD dwMajor, dwMinor, dwBuildNumber;
+			proc(&dwMajor, &dwMinor, &dwBuildNumber);
+			dwBuildNumber &= 0xffff;
+			if (dwMajor >= kWindows10 && dwBuildNumber >= buildNumber) {
+				FreeLibrary(hinst);
+				return true;
+			}
+			else {
+				FreeLibrary(hinst);
+				return false;
+			}
+		}
+		else {
+			FreeLibrary(hinst);
+			return (GetOsVersion(&major, nullptr, nullptr) && (major >= kWindows10));
+		}
+	}
+	else {
+		return (GetOsVersion(&major, nullptr, nullptr) && (major >= kWindows10));
 	}
 }
 

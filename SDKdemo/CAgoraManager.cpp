@@ -445,7 +445,7 @@ void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbS
 			prog.height = item->height;
 
 			if (item->icon.data.size() > 0) {
-				prog.iconBGRA.buffer = (const char*)&item->icon.data[0];
+				prog.iconBGRA.buffer = item->icon.data;
 				prog.iconBGRA.length = item->icon.data.size();
 			}
 			else {
@@ -456,7 +456,7 @@ void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbS
 			prog.iconBGRA.height = item->icon.height;
 
 			if (item->thumb.data.size() > 0) {
-				prog.thumbBGRA.buffer = (const char*)&item->thumb.data[0];
+				prog.thumbBGRA.buffer = item->thumb.data;
 				prog.thumbBGRA.length = item->thumb.data.size();
 			}
 			else {
@@ -484,7 +484,7 @@ void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop, int nThum
 		prog.y = it->rc.top;
 		prog.width = it->rc.right - it->rc.left;
 		prog.height = it->rc.bottom - it->rc.top;
-		prog.thumbBGRA.buffer = (const char*)&it->thumb.data[0];
+		prog.thumbBGRA.buffer = it->thumb.data;
 		prog.thumbBGRA.length = it->thumb.data.size();
 		prog.thumbBGRA.width = it->thumb.width;
 		prog.thumbBGRA.height = it->thumb.height;

@@ -681,14 +681,16 @@ void CSDKdemoDlg::OnBnClickedEnumDisplay()
 
 void CSDKdemoDlg::OnBnClickedEnumWin()
 {
-	using namespace app::utils;
+	std::vector<CAgoraManager::WindowInfo> wndList;
+	m_agoraManager->GetWindowList(wndList, 600, 400, 64, 64);
+	/*using namespace app::utils;
 	using ListWindowsInfo = std::list<WindowEnumer::WINDOW_INFO>;
 	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
 
 	std::list<std::string> vecFilters;
 	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters, 600, 400, 64, 64);
 
-	int winNum = mapWindows.size();
+	int winNum = mapWindows.size();*/
 }
 
 

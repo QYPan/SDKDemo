@@ -206,18 +206,21 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 		info.icon.height = win_infos->iconHeight;
 	}
 
-	static SimpleWindow* simplewnd = new SimpleWindow("background");
-	DrawThumbToWindow(simplewnd->GetView(), hwnd, info.thumb.width, info.thumb.height);
-	SendMessage(simplewnd->GetView(), WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
-
-	// 获取窗口缩略图
-	/*uint8_t* thumbdata = NULL;
-	uint32_t width, height;
-	if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
-		StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height, 
-			(const char*)thumbdata, info.thumb.data);
-		delete[] thumbdata;
-	}*/
+	if (IsWindows8OrLater()) {
+		static SimpleWindow* simplewnd = new SimpleWindow("background");
+		DrawThumbToWindow(simplewnd->GetView(), hwnd, info.thumb.width, info.thumb.height);
+		SendMessage(simplewnd->GetView(), WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
+	}
+	else {
+		// 获取窗口缩略图
+		uint8_t* thumbdata = NULL;
+		uint32_t width, height;
+		if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
+			StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height,
+				(const char*)thumbdata, info.thumb.data);
+			delete[] thumbdata;
+		}
+	}
 	
 	ReleaseDC(hwnd, window_dc);
 

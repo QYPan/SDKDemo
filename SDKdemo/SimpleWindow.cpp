@@ -25,7 +25,6 @@ SimpleWindow::SimpleWindow(std::string window_title) : hwnd_(nullptr), stop_(fal
   looper_ = std::unique_ptr<std::thread>(new std::thread([this, window_title, &created] {
     hwnd_ = CreateWindowA(kSimpleWindowClass, window_title.c_str(), WS_POPUP, 0, 0,
                           static_cast<int>(1280), static_cast<int>(720), NULL, NULL, NULL, NULL);
-
     SetEvent(created);
 
     if (!hwnd_) {
@@ -83,8 +82,8 @@ LRESULT WINAPI SimpleWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPAR
   }
   else if (msg == WM_KEYDOWN && wparam == VK_DELETE) {
 	  app::utils::WindowEnumer::IMAGE_INFO* info = (app::utils::WindowEnumer::IMAGE_INFO*)lparam;
-	
-	  HDC window_dc = GetDC(hwnd);
+	  
+	  HDC window_dc = GetWindowDC(hwnd);
 	  uint8_t* thumbdata = NULL;
 	  uint32_t width, height;
 	  if (app::utils::GetWindowImageGDI(hwnd, &thumbdata, width, height)) {

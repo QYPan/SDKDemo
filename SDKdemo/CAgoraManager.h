@@ -30,13 +30,12 @@ public:
 
 	struct AgoraImageBuffer
 	{
-		const char * buffer;     ///< Í¼ÄÚÈÝ
+		std::vector<unsigned char> buffer;     ///< Í¼ÄÚÈÝ
 		uint32_t length;         ///< Í¼»º´æ´óÐ¡
 		uint32_t width;          ///< Í¼¿í
 		uint32_t height;         ///< Í¼¸ß
 		AgoraImageBuffer()
-			: buffer(nullptr)
-			, length(0)
+			: length(0)
 			, width(0)
 			, height(0)
 		{};
