@@ -5,6 +5,7 @@
 #include <vector>
 #include <set>
 #include <string>
+#include <mutex>
 
 using namespace agora::rtc;
 
@@ -255,4 +256,6 @@ private:
 
 	CameraInfo current_camera_ = CameraInfo{0, "", ""};
 	bool initialized_ = false;
+
+	std::mutex mtx_;
 };

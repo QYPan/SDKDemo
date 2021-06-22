@@ -136,9 +136,9 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	const char* lpSrcToken, agora::rtc::uid_t uidSrc) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		if (is_enable_video_observer_ && video_frame_observer_) {
-			video_frame_observer_->init();
-		}
+	if (is_enable_video_observer_ && video_frame_observer_) {
+		video_frame_observer_->init();
+	}
 
 	ChannelMediaOptions op;
 	op.publishAudioTrack = false;
@@ -267,10 +267,10 @@ void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFram
 bool CAgoraManager::StartPushCamera(bool bWithMic) {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		if (IsPushCamera()) {
-			printf("[I]: StartPushCamera, already push camera\n");
-			return true;
-		}
+	if (IsPushCamera()) {
+		printf("[I]: StartPushCamera, already push camera\n");
+		return true;
+	}
 
 	rtc_engine_->enableLocalVideo(true);
 
@@ -321,7 +321,7 @@ bool CAgoraManager::IsPushCamera() {
 void CAgoraManager::UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFrameRate) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		param_.dimensions.width = nPushW;
+	param_.dimensions.width = nPushW;
 	param_.dimensions.height = nPushH;
 	param_.frameRate = nPushFrameRate;
 	int ret = rtc_engine_->updateScreenCaptureParameters(param_);
@@ -403,10 +403,10 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 bool CAgoraManager::StopPushScreen() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
-		if (!IsPushScreen()) {
-			printf("[I]: StopPushScreen, already stop screen share\n");
-			return true;
-		}
+	if (!IsPushScreen()) {
+		printf("[I]: StopPushScreen, already stop screen share\n");
+		return true;
+	}
 
 	int ret = rtc_engine_->stopScreenCapture();
 	printf("[I]: stopScreenCapture, ret: %d\n", ret);
@@ -516,13 +516,13 @@ bool CAgoraManager::IsPushScreen() {
 int CAgoraManager::StartPreview() {
 	RETURN_ERR_IF_ENGINE_NOT_INITIALIZED()
 
-		return rtc_engine_->startPreview();
+	return rtc_engine_->startPreview();
 }
 
 int CAgoraManager::StopPreview() {
 	RETURN_ERR_IF_ENGINE_NOT_INITIALIZED()
 
-		return rtc_engine_->stopPreview();
+	return rtc_engine_->stopPreview();
 }
 
 void CAgoraManager::EnableVideoFrameObserver(bool enable) {
@@ -578,7 +578,7 @@ bool CAgoraManager::GetScreenImage(BYTE* pData, int& nRetW, int& nRetH) {
 void CAgoraManager::SetPushCameraPause(bool bPause) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		ChannelMediaOptions op;
+	ChannelMediaOptions op;
 	op.publishCameraTrack = (!bPause);
 	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
 	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
@@ -725,7 +725,7 @@ void CAgoraManager::SetMicVolume(int nVol) {
 void CAgoraManager::SetSystemMicVolume(int nVol) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		agora::rtc::IAudioDeviceManager* adm = nullptr;
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
@@ -801,11 +801,12 @@ void CAgoraManager::MutePlayer(agora::rtc::uid_t uid, bool bMute) {
 }
 
 void CAgoraManager::GetPlayerUID(std::vector<agora::rtc::uid_t>& uidList) {
+	std::lock_guard<std::mutex> lck (mtx_);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		for (auto it = users_in_channel_.begin(); it != users_in_channel_.end(); it++) {
-			uidList.push_back(*it);
-		}
+	for (auto it = users_in_channel_.begin(); it != users_in_channel_.end(); it++) {
+		uidList.push_back(*it);
+	}
 }
 
 void CAgoraManager::OnJoinChannelSuccess(const char* channel, uid_t uid, int elapsed, conn_id_t connId) {
@@ -821,7 +822,7 @@ void CAgoraManager::OnJoinChannelSuccess(const char* channel, uid_t uid, int ela
 void CAgoraManager::SetPushScreenPause(bool bPause) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		ChannelMediaOptions op;
+	ChannelMediaOptions op;
 	op.publishScreenTrack = (!bPause);
 	int ret = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
 	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
@@ -837,7 +838,7 @@ bool CAgoraManager::IsPushScreenPause() {
 void CAgoraManager::SetPushScreenAudioMute(bool bMute) {
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-		int ret = rtc_engine_->muteLocalAudioStream(bMute);
+	int ret = rtc_engine_->muteLocalAudioStream(bMute);
 	printf("[I]: muteLocalAudioStream, mute: %d, ret: %d\n", bMute, ret);
 	if (ret == 0) {
 		is_mute_mic_ = bMute;
@@ -854,6 +855,7 @@ void CAgoraManager::OnLeaveChannel(const RtcStats& stat, conn_id_t connId) {
 void CAgoraManager::OnUserJoined(uid_t uid, int elapsed, conn_id_t connId) {
 	if (connId == DEFAULT_CONNECTION_ID) {
 		if (uid != screen_uid_ && uid != custom_uid_) {
+			std::lock_guard<std::mutex> lck (mtx_);
 			users_in_channel_.insert(uid);
 		}
 		else {
@@ -865,6 +867,7 @@ void CAgoraManager::OnUserJoined(uid_t uid, int elapsed, conn_id_t connId) {
 
 void CAgoraManager::OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId) {
 	if (connId == DEFAULT_CONNECTION_ID) {
+		std::lock_guard<std::mutex> lck (mtx_);
 		users_in_channel_.erase(uid);
 	}
 }
