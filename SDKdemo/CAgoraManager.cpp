@@ -4,6 +4,8 @@
 #include "CAGEngineEventHandler.h"
 #include "WinEnumerImpl.h"
 
+#include <fstream>
+
 #define RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED() \
   if (!initialized_) {                           \
     return false;                                \
@@ -18,6 +20,77 @@
   if (!initialized_) {                         \
     return -7;                                 \
   }
+
+class SimpleLogger {
+public:
+  static SimpleLogger* GetInstance() {
+    if (!instance_) {
+      instance_ = new SimpleLogger();
+    }
+    return instance_;
+  }
+
+  static void DestroyInstance() {
+    if (instance_) {
+      delete instance_;
+      instance_ = nullptr;
+    }
+  }
+
+  enum LOG_TYPE {
+    L_INFO,
+    L_WARN,
+    L_ERROR,
+	L_FUNC
+  };
+
+  void Print(LOG_TYPE type, const char* fmt, ...) {
+    if (!fmt || !*fmt) {
+      return;
+    }
+
+    va_list ap;
+    va_start(ap, fmt);
+    auto size = vsnprintf(nullptr, 0, fmt, ap);
+    va_end(ap);
+    if (size <= 0) {
+      return;
+    }
+
+    std::unique_ptr<char[]> buf = std::make_unique<char[]>(size + 2);
+    memset(buf.get(), 0, size + 2);
+    va_start(ap, fmt);
+    size = vsnprintf(buf.get(), size + 2, fmt, ap);
+    va_end(ap);
+    if (size <= 0) {
+      return;
+    }
+
+	static std::map<LOG_TYPE, std::string> log_type_map = {{L_INFO, "[I]: "},{L_WARN, "[W]: "},{L_ERROR, "[E]: "}, {L_FUNC, "[F]: "}};
+
+    std::string msg(buf.get());
+    if (writer_.is_open()) {
+      writer_ << log_type_map[type] << msg << std::endl;
+    }
+  }
+
+private:
+  SimpleLogger() {
+    writer_.open("AgoraManager.log", std::ofstream::out);
+  }
+
+  ~SimpleLogger() {
+    writer_.close();
+  }
+
+  static SimpleLogger *instance_;
+  std::ofstream writer_;
+};
+
+SimpleLogger* SimpleLogger::instance_ = nullptr;
+
+#define PRINT_LOG(type, ...) \
+	SimpleLogger::GetInstance()->Print(type, ##__VA_ARGS__)
 
 CAgoraManager* CAgoraManager::instance_ = nullptr;
 
@@ -40,14 +113,15 @@ void CAgoraManager::Destroy() {
 }
 
 bool CAgoraManager::Init(const char* lpAppID) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, __FUNCTION__);
 	if (initialized_) {
-		printf("[I]: rtc engine has initialized\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "rtc engine has initialized.");
 		return true;
 	}
 
 	rtc_engine_ = createAgoraRtcEngine();
 	if (!rtc_engine_) {
-		printf("[E]: create agora rtc engine fail!\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create agora rtc engine fail!");
 		return false;
 	}
 
@@ -61,7 +135,7 @@ bool CAgoraManager::Init(const char* lpAppID) {
 	ctx.appId = lpAppID;
 
 	int ret = rtc_engine_->initialize(ctx);
-	printf("[I]: rtc engine initialize, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "rtc engine initialize, ret: %d.", ret);
 
 	if (ret) {
 		delete camera_event_handler_;
@@ -90,6 +164,9 @@ bool CAgoraManager::Init(const char* lpAppID) {
 }
 
 void CAgoraManager::Release() {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, __FUNCTION__);
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
 	if (rtc_engine_) {
 		rtc_engine_->release();
 		rtc_engine_ = nullptr;
@@ -124,6 +201,8 @@ void CAgoraManager::Release() {
 	ResetStates();
 
 	initialized_ = false;
+
+	SimpleLogger::DestroyInstance();
 }
 
 bool CAgoraManager::IsJoinChannel() {
@@ -134,10 +213,12 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	const char* lpToken, agora::rtc::uid_t uid,
 	const char* lpSubToken, agora::rtc::uid_t uidSub,
 	const char* lpSrcToken, agora::rtc::uid_t uidSrc) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: channel: %s, uid: %u, uidSub: %u, uidSrc: %u.", __FUNCTION__, lpChannelId, uid, uidSub, uidSrc);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if (is_enable_video_observer_ && video_frame_observer_) {
 		video_frame_observer_->init();
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "enable video frame observer.");
 	}
 
 	ChannelMediaOptions op;
@@ -148,7 +229,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	op.autoSubscribeVideo = false;
 	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 	int ret = rtc_engine_->joinChannel(lpToken, lpChannelId, uid, op);
-	printf("[I]: joinChannel, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannel, channel: %s, uid: %u, ret: %d.", lpChannelId, uid, ret);
 
 	if (!screen_event_handler_) {
 		screen_event_handler_ = new CAGEngineEventHandler(this);
@@ -167,7 +248,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 
 		ret1 = rtc_engine_->joinChannelEx(lpSubToken, lpChannelId, uidSub, op, screen_event_handler_, &screen_connId_);
-		printf("[I]: joinChannelEx, ret1: %d\n", ret1);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannelEx, channel: %s, uid: %u, ret1: %d.", lpChannelId, uidSub, ret1);
 
 		screen_event_handler_->SetConnectionId(screen_connId_);
 	}
@@ -189,7 +270,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 
 		ret2 = rtc_engine_->joinChannelEx(lpSrcToken, lpChannelId, uidSrc, op, custom_event_handler_, &custom_connId_);
-		printf("[I]: joinChannelEx, ret2: %d\n", ret2);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannelEx, channel: %s, uid: %u, ret2: %d.", lpChannelId, uidSrc, ret2);
 
 		custom_event_handler_->SetConnectionId(custom_connId_);
 	}
@@ -198,6 +279,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 }
 
 bool CAgoraManager::LeaveChannel() {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, __FUNCTION__);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->leaveChannel();
@@ -213,6 +295,7 @@ bool CAgoraManager::LeaveChannel() {
 }
 
 void CAgoraManager::SetCameraShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: hwnd: %d, renderMode: %d.", __FUNCTION__, hwnd, renderMode);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	VideoCanvas vc;
@@ -223,10 +306,11 @@ void CAgoraManager::SetCameraShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE
 	if (ret == 0) {
 		camera_view_ = hwnd;
 	}
-	printf("[I]: setupLocalVideo(camera), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setupLocalVideo, ret: %d.", ret);
 }
 
 void CAgoraManager::SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: uid: %u, hwnd: %d, renderMode: %d.", __FUNCTION__, uid, hwnd, renderMode);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	VideoCanvas vc;
@@ -234,10 +318,11 @@ void CAgoraManager::SetPlayerShowHwnd(agora::rtc::uid_t uid, HWND hwnd, agora::m
 	vc.uid = uid;
 	vc.renderMode = renderMode;
 	int ret = rtc_engine_->setupRemoteVideo(vc);
-	printf("[I]: setupLocalVideo(screen), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setupRemoteVideo, ret: %d.", ret);
 }
 
 void CAgoraManager::SetWindowDesktopShowHwnd(HWND hwnd, agora::media::base::RENDER_MODE_TYPE renderMode) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: hwnd: %d, renderMode: %d.", __FUNCTION__, hwnd, renderMode);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	VideoCanvas vc;
@@ -249,10 +334,11 @@ void CAgoraManager::SetWindowDesktopShowHwnd(HWND hwnd, agora::media::base::REND
 	if (ret == 0) {
 		screen_view_ = hwnd;
 	}
-	printf("[I]: setupLocalVideo(screen), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setupLocalVideo, ret: %d.", ret);
 }
 
 void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFrameRate) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nPushW: %d, nPushH: %d, nPushFrameRate: %d.", __FUNCTION__, nPushW, nPushH, nPushFrameRate);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	VideoEncoderConfiguration cfg;
@@ -261,14 +347,15 @@ void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFram
 	cfg.frameRate = nPushFrameRate;
 
 	int ret = rtc_engine_->setVideoEncoderConfiguration(cfg);
-	printf("[I]: setVideoEncoderConfiguration(publish camera), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setVideoEncoderConfiguration, ret: %d.", ret);
 }
 
 bool CAgoraManager::StartPushCamera(bool bWithMic) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: bWithMic: %d.", __FUNCTION__, bWithMic);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if (IsPushCamera()) {
-		printf("[I]: StartPushCamera, already push camera\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "already push camera.");
 		return true;
 	}
 
@@ -284,6 +371,7 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	if (ret == 0) {
 		is_publish_camera_ = true;
@@ -291,16 +379,15 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 
 	rtc_engine_->startPreview();
 
-	printf("[I]: StartPushCamera, ret: %d\n", ret);
-
 	return ret ? false : true;
 }
 
 bool CAgoraManager::StopPushCamera() {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if (!IsPushCamera()) {
-		printf("[I]: StopPushCamera, already stop camera\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "already stop camera.");
 		return true;
 	}
 
@@ -315,12 +402,11 @@ bool CAgoraManager::StopPushCamera() {
 
 	op.publishCameraTrack = false;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	if (ret == 0) {
 		is_publish_camera_ = false;
 	}
-
-	printf("[I]: StopPushCamera, ret: %d\n", ret);
 
 	return (ret ? false : true);
 }
@@ -330,20 +416,22 @@ bool CAgoraManager::IsPushCamera() {
 }
 
 void CAgoraManager::UpdatePushScreenConfig(int nPushW, int nPushH, int nPushFrameRate) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nPushW: %d, nPushH: %d, nPushFrameRate: %d.", __FUNCTION__, nPushW, nPushH, nPushFrameRate);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	param_.dimensions.width = nPushW;
 	param_.dimensions.height = nPushH;
 	param_.frameRate = nPushFrameRate;
 	int ret = rtc_engine_->updateScreenCaptureParameters(param_);
-	printf("[I]: UpdatePushScreenConfig, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateScreenCaptureParameters, ret: %d.", ret);
 }
 
 bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: bWithMic: %d, nPushFps: %d.", __FUNCTION__, bWithMic, nPushFps);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if (IsPushScreen()) {
-		printf("[I]: StartPushScreen, already start screen share\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "already start screen share.");
 		return true;
 	}
 
@@ -354,13 +442,23 @@ bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 	int ret = -1;
 	int ret1 = -1;
 
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "encoder_config: width: %d, height: %d, framerate: %d, bitrate: %d.",
+		param_.dimensions.width, param_.dimensions.height, param_.frameRate, param_.bitrate);
+
 	if (share_win_) {
 		ret = rtc_engine_->startScreenCaptureByWindowId((agora::view_t)share_win_, region_rect_, param_);
-		printf("[I]: startScreenCaptureByWindowId, ret: %d\n", ret);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "startScreenCaptureByWindowId, win: %d, region[x:%d,y:%d,w:%d,h:%d], ret: %d.",
+			share_win_, region_rect_.x, region_rect_.y, region_rect_.width, region_rect_.height, ret);
 	}
 	else {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "exclude_window_size: %d.", exclude_window_list_.size());
+		for (auto win : exclude_window_list_) {
+			PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "exclude_window_id: %d.", win);
+		}
 		ret = rtc_engine_->startScreenCaptureByScreenRect(screen_rect_, region_rect_, param_);
-		printf("[I]: startScreenCaptureByScreenRect, ret: %d\n", ret);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "startScreenCaptureByScreenRect, screen[x:%d,y:%d,w:%d,h:%d], region[x:%d,y:%d,w:%d,h:%d], ret: %d.",
+			share_win_, screen_rect_.x, screen_rect_.y, screen_rect_.width, screen_rect_.height,
+			region_rect_.x, region_rect_.y, region_rect_.width, region_rect_.height, ret);
 	}
 
 	if (ret == 0) {
@@ -374,25 +472,27 @@ bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 		}
 
 		ret1 = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret1);
+
 		is_publish_screen_ = true;
 	}
 
 	rtc_engine_->startPreview();
-
-	printf("[I]: StartPushScreen, ret: %d\n", (ret == 0 && ret1 == 0));
 
 	return (ret || ret1) ? false : true;
 }
 
 void CAgoraManager::SetPushDesktop(int nScreenID,
 	int x, int y, int w, int h) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nScreenID: %d, region[x:%d,y:%d,w:%d,h:%d].", __FUNCTION__,
+		nScreenID, x, y, w, h);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	std::vector<DesktopInfo> desktops;
 	GetDesktopList(desktops, 300, 300);
 
 	if (nScreenID < 0 || nScreenID >= desktops.size()) {
-		printf("[E]: SetPushDesktop, desktop_size: %d, screen_id: %d\n", desktops.size(), nScreenID);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "desktop_size: %d, screen_id: %d.", desktops.size(), nScreenID);
 		return;
 	}
 
@@ -408,17 +508,17 @@ void CAgoraManager::SetPushDesktop(int nScreenID,
 	region_rect_.height = h;
 
 	if (IsPushScreen()) {
-		rtc_engine_->updateScreenCaptureRegion(region_rect_);
+		int ret = rtc_engine_->updateScreenCaptureRegion(region_rect_);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateScreenCaptureRegion: ret: %d.", ret);
 	}
-
-	printf("[E]: SetPushDesktop, screen_id: %d, is_pushed: %d\n", nScreenID, IsPushScreen());
 }
 
 bool CAgoraManager::StopPushScreen() {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	if (!IsPushScreen()) {
-		printf("[I]: StopPushScreen, already stop screen share\n");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "already stop screen share.");
 		return true;
 	}
 
@@ -430,6 +530,7 @@ bool CAgoraManager::StopPushScreen() {
 		rtc_engine_->enableLocalAudio(false);
 		op.publishAudioTrack = false;
 		is_publish_screen_audio_ = false;
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "enableLocalAudio(false).");
 	}
 
 	op.publishScreenTrack = false;
@@ -439,23 +540,26 @@ bool CAgoraManager::StopPushScreen() {
 	is_publish_screen_ = false;
 	share_win_ = 0;
 
-	printf("[I]: StopPushScreen, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	return ret ? false : true;
 }
 
 void CAgoraManager::SetPushWindow(HWND hwnd,
 	int x, int y, int w, int h) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: hwnd: %d, region[x:%d,y:%d,w:%d,h:%d].", __FUNCTION__,
+		hwnd, x, y, w, h);
+
 	share_win_ = hwnd;
 	region_rect_.x = x;
 	region_rect_.y = y;
 	region_rect_.width = w;
 	region_rect_.height = h;
-
-	printf("[I]: SetPushWindow, hwnd: %d\n", hwnd);
 }
 
 void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbSizeW, int nThumbSizeH, int nIconSizeW, int nIconSizeH) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nThumbSizeW: %d, nThumbSizeH: %d, nIconSizeW: %d, nIconSizeH: %d.", __FUNCTION__,
+		nThumbSizeW, nThumbSizeH, nIconSizeW, nIconSizeH);
 
 	std::list<std::string> filters;
 	auto win_list = app::utils::WindowEnumer::EnumAllWindows(filters, nThumbSizeW, nThumbSizeH, nIconSizeW, nIconSizeH);
@@ -502,6 +606,8 @@ void CAgoraManager::GetWindowList(std::vector<WindowInfo>& vWindows, int nThumbS
 }
 
 void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop, int nThumbSizeW, int nThumbSizeH) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nThumbSizeW: %d, nThumbSizeH: %d.", __FUNCTION__, nThumbSizeW, nThumbSizeH);
+
 	std::list<app::utils::WindowEnumer::MONITOR_INFO> desktops = app::utils::WindowEnumer::EnumAllMonitors(nThumbSizeW, nThumbSizeH);
 	if (desktops.size()) {
 		vDesktop.clear();
@@ -524,6 +630,9 @@ void CAgoraManager::GetDesktopList(std::vector<DesktopInfo>& vDesktop, int nThum
 }
 
 void CAgoraManager::SetPushFilter(HWND* pFilterHwndList, int nFilterNum) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: pFilterHwndList: %p, nFilterNum: %d.", __FUNCTION__,
+		pFilterHwndList ? pFilterHwndList : 0, nFilterNum);
+
 	if (!pFilterHwndList) {
 		return;
 	}
@@ -533,11 +642,16 @@ void CAgoraManager::SetPushFilter(HWND* pFilterHwndList, int nFilterNum) {
 		exclude_window_list_.push_back(pFilterHwndList[i]);
 	}
 
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "exclude_window_size: %d.", exclude_window_list_.size());
+	for (auto win : exclude_window_list_) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "exclude_window_id: %d.", win);
+	}
+
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
 
 	int ret = rtc_engine_->updateScreenCaptureParameters(param_);
-	printf("[I]: updateScreenCaptureParameters, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateScreenCaptureParameters, ret: %d.", ret);
 }
 
 bool CAgoraManager::IsPushScreen() {
@@ -557,6 +671,7 @@ int CAgoraManager::StopPreview() {
 }
 
 void CAgoraManager::EnableVideoFrameObserver(bool enable) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: enable: %d.", __FUNCTION__, enable);
 	is_enable_video_observer_ = enable;
 }
 
@@ -607,12 +722,15 @@ bool CAgoraManager::GetScreenImage(BYTE* pData, int& nRetW, int& nRetH) {
 }
 
 void CAgoraManager::SetPushCameraPause(bool bPause) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: bPause: %d.", __FUNCTION__, bPause);
+
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
 	op.publishCameraTrack = (!bPause);
 	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
-	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
+
 	if (ret == 0) {
 		is_mute_camera_ = bPause;
 	}
@@ -623,10 +741,11 @@ bool CAgoraManager::IsPushCameraPause() {
 }
 
 void CAgoraManager::SetPushCameraAudioMute(bool bMute) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: bMute: %d.", __FUNCTION__, bMute);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteLocalAudioStream(bMute);
-	printf("[I]: muteLocalAudioStream, mute: %d, ret: %d\n", bMute, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteLocalAudioStream, ret: %d.", ret);
 	if (ret == 0) {
 		is_mute_mic_ = bMute;
 	}
@@ -637,12 +756,14 @@ bool CAgoraManager::IsPushCameraAudioMute() {
 }
 
 void CAgoraManager::SetPushCamera(int nCamID) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nCamID: %d.", __FUNCTION__, nCamID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IVideoDeviceManager* vdm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&vdm));
 	if (!vdm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get vdm!");
 		return;
 	}
 
@@ -660,12 +781,14 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 }
 
 void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IVideoDeviceManager* vdm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&vdm));
 	if (!vdm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get vdm!");
 		return;
 	}
 
@@ -674,6 +797,7 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 
 	int count = vdc->getCount();
 	if (count <= 0) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not find any video device.");
 		return;
 	}
 
@@ -693,12 +817,14 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 }
 
 void CAgoraManager::SetMic(int nID) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nID.", __FUNCTION__, nID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
 		return;
 	}
 
@@ -715,12 +841,14 @@ void CAgoraManager::SetMic(int nID) {
 }
 
 void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
 		return;
 	}
 
@@ -729,6 +857,7 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 
 	int count = adc->getCount();
 	if (count <= 0) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not find any audio device.");
 		return;
 	}
 
@@ -748,33 +877,40 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 }
 
 void CAgoraManager::SetMicVolume(int nVol) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nVol: %d.", __FUNCTION__, nVol);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
 	int ret = rtc_engine_->adjustRecordingSignalVolume(nVol);
-	printf("[I]: adjustRecordingSignalVolume, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "adjustRecordingSignalVolume, ret: %d.", ret);
 }
 
 void CAgoraManager::SetSystemMicVolume(int nVol) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nVol: %d.", __FUNCTION__, nVol);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	agora::rtc::IAudioDeviceManager* adm = nullptr;
 	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
 		reinterpret_cast<void**>(&adm));
 	if (!adm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
 		return;
 	}
 
 	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
 	int ret = audio_device_manager->setRecordingDeviceVolume(nVol);
-	printf("[I]: setRecordingDeviceVolume, ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setRecordingDeviceVolume, ret: %d.", ret);
 }
 
 void CAgoraManager::SetPushSystemAudio(int nMode) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nMode: %d.", __FUNCTION__, nMode);
+
 	if (nMode < PushSystemAudioOption_None || nMode > PushSystemAudioOption_Screen) {
-		printf("[E]: invalid system audio mode, mode: %d\n", nMode);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "invalid system audio mode, mode: %d!", nMode);
 		return;
 	}
 
 	if (nMode == current_recording_mode_) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "no need to change mode.");
 		return;
 	}
 
@@ -800,38 +936,44 @@ void CAgoraManager::SetPushSystemAudio(int nMode) {
 }
 
 void CAgoraManager::StartPlayer(agora::rtc::uid_t uid) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: uid: %u.", __FUNCTION__, uid);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteRemoteVideoStream(uid, false);
 	int ret1 = rtc_engine_->muteRemoteAudioStream(uid, false);
-	printf("[I]: muteRemoteVideoStream(false), ret: %d\n", ret);
-	printf("[I]: muteRemoteAudioStream(false), ret: %d\n", ret1);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteVideoStream, ret: %d.", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteAudioStream, ret1: %d.", ret1);
 }
 
 void CAgoraManager::StopPlayer(agora::rtc::uid_t uid) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: uid: %u.", __FUNCTION__, uid);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteRemoteVideoStream(uid, true);
 	int ret1 = rtc_engine_->muteRemoteAudioStream(uid, true);
-	printf("[I]: muteRemoteVideoStream(true), ret: %d\n", ret);
-	printf("[I]: muteRemoteAudioStream(true), ret: %d\n", ret1);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteVideoStream, ret: %d.", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteAudioStream, ret1: %d.", ret1);
 }
 
 void CAgoraManager::PausePlayer(agora::rtc::uid_t uid, bool bPause) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: uid: %u, bPause: %d.", __FUNCTION__, uid, bPause);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteRemoteVideoStream(uid, bPause);
-	printf("[I]: muteRemoteVideoStream(camera), mute: %d, ret: %d\n", bPause, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteVideoStream, ret: %d.", ret);
 }
 
 void CAgoraManager::MutePlayer(agora::rtc::uid_t uid, bool bMute) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: uid: %u, bMute: %d.", __FUNCTION__, uid, bMute);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteRemoteAudioStream(uid, bMute);
-	printf("[I]: muteRemoteAudioStream(camera), mute: %d, ret: %d\n", bMute, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteRemoteAudioStream, ret: %d.", ret);
 }
 
 void CAgoraManager::GetPlayerUID(std::vector<agora::rtc::uid_t>& uidList) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
+
 	std::lock_guard<std::mutex> lck (mtx_);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
@@ -851,12 +993,14 @@ void CAgoraManager::OnJoinChannelSuccess(const char* channel, uid_t uid, int ela
 }
 
 void CAgoraManager::SetPushScreenPause(bool bPause) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s, bPause: %d.", __FUNCTION__, bPause);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
 	op.publishScreenTrack = (!bPause);
 	int ret = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
-	printf("[I]: updateChannelMediaOptions(camera), mute: %d, ret: %d\n", bPause, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
+
 	if (ret == 0) {
 		is_mute_screen_ = bPause;
 	}
@@ -867,10 +1011,12 @@ bool CAgoraManager::IsPushScreenPause() {
 }
 
 void CAgoraManager::SetPushScreenAudioMute(bool bMute) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s, bMute: %d.", __FUNCTION__, bMute);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->muteLocalAudioStream(bMute);
-	printf("[I]: muteLocalAudioStream, mute: %d, ret: %d\n", bMute, ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "muteLocalAudioStream, ret: %d.", ret);
+
 	if (ret == 0) {
 		is_mute_mic_ = bMute;
 	}
@@ -885,6 +1031,8 @@ void CAgoraManager::OnLeaveChannel(const RtcStats& stat, conn_id_t connId) {
 
 void CAgoraManager::OnUserJoined(uid_t uid, int elapsed, conn_id_t connId) {
 	if (connId == DEFAULT_CONNECTION_ID) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "OnUserJoined, uid: %u, elapsed: %d.", uid, elapsed);
+
 		if (uid != screen_uid_ && uid != custom_uid_) {
 			std::lock_guard<std::mutex> lck (mtx_);
 			users_in_channel_.insert(uid);
@@ -898,23 +1046,24 @@ void CAgoraManager::OnUserJoined(uid_t uid, int elapsed, conn_id_t connId) {
 
 void CAgoraManager::OnUserOffline(uid_t uid, USER_OFFLINE_REASON_TYPE reason, conn_id_t connId) {
 	if (connId == DEFAULT_CONNECTION_ID) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "OnUserOffline, uid: %u, reason: %d.", uid, reason);
+
 		std::lock_guard<std::mutex> lck (mtx_);
 		users_in_channel_.erase(uid);
 	}
 }
 
 void CAgoraManager::onError(int err, const char* msg, conn_id_t connId) {
-	if (connId == DEFAULT_CONNECTION_ID) {
-		printf("[I]: onError, err: %d, msg: %s\n", err, msg);
-	}
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onError, err: %d, msg: %s, connId: %d.", err, msg, connId);
 }
 
 void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNECTION_CHANGED_REASON_TYPE reason, conn_id_t connId) {
-	printf("[I]: onConnectionStateChanged, state: %d, reason: %d, connId: %d\n", state, reason, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onConnectionStateChanged, state: %d, reason: %d, connId: %d.", state, reason, connId);
 }
 
 void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
-	printf("[I]: onMediaDeviceChanged, deviceTypd: %d, connId: %d\n", deviceType, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onMediaDeviceChanged, deviceType: %d, connId: %d.", deviceType, connId);
+
 	if (deviceType == 3) {
 		std::vector<CAgoraManager::CameraInfo> camera_list;
 		GetCameraList(camera_list);
@@ -930,30 +1079,33 @@ void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 }
 
 void CAgoraManager::onLocalVideoStateChanged(LOCAL_VIDEO_STREAM_STATE state, LOCAL_VIDEO_STREAM_ERROR error, conn_id_t connId) {
-	printf("[I]: onLocalVideoStateChanged, state: %d, error: %d, connId: %d\n", state, error, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onLocalVideoStateChanged, deviceType: %d, connId: %d.", state, error, connId);
 }
 
 void CAgoraManager::onLocalAudioStateChanged(LOCAL_AUDIO_STREAM_STATE state, LOCAL_AUDIO_STREAM_ERROR error, conn_id_t connId) {
 	printf("[I]: onLocalAudioStateChanged, state: %d, error: %d, connId: %d\n", state, error, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onLocalVideoStateChanged, deviceType: %d, connId: %d.", state, error, connId);
 }
 
 void CAgoraManager::onRemoteVideoStateChanged(uid_t uid, REMOTE_VIDEO_STATE state, REMOTE_VIDEO_STATE_REASON reason, int elapsed, conn_id_t connId) {
-	printf("[I]: onRemoteVideoStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d\n", uid, state, reason, elapsed, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onRemoteVideoStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d.", uid, state, reason, elapsed, connId);
 }
 
 void CAgoraManager::onRemoteAudioStateChanged(uid_t uid, REMOTE_AUDIO_STATE state, REMOTE_AUDIO_STATE_REASON reason, int elapsed, conn_id_t connId) {
-	printf("[I]: onRemoteAudioStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d\n", uid, state, reason, elapsed, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onRemoteAudioStateChanged, uid: %u, state: %d, reason: %d, elapsed: %d, connId: %d.", uid, state, reason, elapsed, connId);
 }
 
 void CAgoraManager::onFirstLocalVideoFramePublished(int elapsed, conn_id_t connId) {
-	printf("[I]: onFirstLocalVideoFramePublished, elapsed: %d, connId: %d\n", elapsed, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onFirstLocalVideoFramePublished, elapsed: %d, connId: %d.", elapsed, connId);
 }
 
 void CAgoraManager::onFirstLocalAudioFramePublished(int elapsed, conn_id_t connId) {
-	printf("[I]: onFirstLocalAudioFramePublished, elapsed: %d, connId: %d\n", elapsed, connId);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onFirstLocalAudioFramePublished, elapsed: %d, connId: %d.", elapsed, connId);
 }
 	
 void CAgoraManager::ResetStates() {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
+
 	is_joined_ = false;
 	is_publish_camera_ = false;
 	is_publish_screen_ = false;
@@ -986,13 +1138,14 @@ void CAgoraManager::ResetStates() {
 
 bool CAgoraManager::StartPushCustom()
 {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = true;
 	op.publishCustomVideoTrack = true;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
-	printf("[I]: updateChannelMediaOptions(publish custom), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	if (ret == 0) {
 		is_publish_custom_ = true;
@@ -1004,13 +1157,14 @@ bool CAgoraManager::StartPushCustom()
 
 bool CAgoraManager::StopPushCustom()
 {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 	
 	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = false;
 	op.publishCustomVideoTrack = false;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
-	printf("[I]: updateChannelMediaOptions(unpublish custom), ret: %d\n", ret);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	if (ret == 0) {
 		is_publish_custom_ = false;
