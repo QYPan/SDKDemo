@@ -23,6 +23,12 @@ public:
 		std::string device_name_utf8;
 	};
 
+	struct PlaybackInfo {
+		int idx = -1;
+		std::string device_id;
+		std::string device_name_utf8;
+	};
+
 	struct CameraInfo {
 		int idx = -1;
 		std::string device_id;
@@ -143,6 +149,7 @@ public:
 	//麦克相关
 	void SetMic(int nID = -1);//-1为默认麦克风
 	void GetMicList(std::vector<MicInfo>& vMic);//获得当前麦克风列表及属性
+	void GetPlaybackList(std::vector<PlaybackInfo>& vPlayback);//获得当前扬声器列表及属性
 
 	// - 0: Mute the recording volume.
     // - 100: The Original volume.
@@ -231,6 +238,12 @@ public:
 	// 音频推流成功回调
 	void onFirstLocalAudioFramePublished(int elapsed, conn_id_t connId);
 
+	// 具体设备插拔回调
+	// deviceType - 设备类型 #MEDIA_DEVICE_TYPE
+	// deviceId   - 设备 id
+	// state      - 设备状态 0: 移除 1: 插入
+	void onMediaDeviceStateChanged(int deviceType, std::string deviceId, int state);
+
 private:
 	void ResetStates();
 
@@ -275,6 +288,10 @@ private:
 	agora::view_t camera_view_ = nullptr;
 	agora::view_t screen_view_ = nullptr;
 	agora::view_t custom_view_ = nullptr;
+
+	std::vector<CameraInfo> camera_list_;
+	std::vector<MicInfo> mic_list_;
+	std::vector<PlaybackInfo> playback_list_;
 
 	conn_id_t camera_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 	conn_id_t screen_connId_ = agora::rtc::DUMMY_CONNECTION_ID;

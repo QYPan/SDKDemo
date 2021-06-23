@@ -5,6 +5,7 @@
 #include "WinEnumerImpl.h"
 
 #include <fstream>
+#include <utility>
 
 #define RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED() \
   if (!initialized_) {                           \
@@ -159,6 +160,10 @@ bool CAgoraManager::Init(const char* lpAppID) {
 	}
 
 	initialized_ = true;
+
+	GetCameraList(camera_list_);
+	GetMicList(mic_list_);
+	GetPlaybackList(playback_list_);
 
 	return true;
 }
@@ -860,7 +865,7 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 
 	int count = adc->getCount();
 	if (count <= 0) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not find any audio device.");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not find any recording device.");
 		return;
 	}
 
@@ -876,6 +881,42 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 		mic_prog.device_name_utf8 = std::string(device_name_utf8);
 		mic_prog.device_id = std::string(device_id);
 		vMic.push_back(mic_prog);
+	}
+}
+
+void CAgoraManager::GetPlaybackList(std::vector<PlaybackInfo>& vPlayback) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
+	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
+		reinterpret_cast<void**>(&adm));
+	if (!adm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
+		return;
+	}
+
+	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
+	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(audio_device_manager->enumeratePlaybackDevices());
+
+	int count = adc->getCount();
+	if (count <= 0) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not find any playback device.");
+		return;
+	}
+
+	char device_name_utf8[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
+	char device_id[agora::rtc::MAX_DEVICE_ID_LENGTH] = { 0 };
+	PlaybackInfo playback_prog;
+
+	for (int i = 0; i < count; i++) {
+		memset(device_name_utf8, 0, agora::rtc::MAX_DEVICE_ID_LENGTH);
+		memset(device_id, 0, agora::rtc::MAX_DEVICE_ID_LENGTH);
+		adc->getDevice(i, device_name_utf8, device_id);
+		playback_prog.idx = i;
+		playback_prog.device_name_utf8 = std::string(device_name_utf8);
+		playback_prog.device_id = std::string(device_id);
+		vPlayback.push_back(playback_prog);
 	}
 }
 
@@ -1067,9 +1108,70 @@ void CAgoraManager::onConnectionStateChanged(CONNECTION_STATE_TYPE state, CONNEC
 void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onMediaDeviceChanged, deviceType: %d, connId: %d.", deviceType, connId);
 
-	if (deviceType == 3) {
-		std::vector<CAgoraManager::CameraInfo> camera_list;
+	auto findChangedDevice = [=](int deviceType, const std::vector<std::string>& old_list, const std::vector<std::string>& new_list,
+		std::string& changed_device, int& state){
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "compare device, type: %d.", deviceType);
+
+		auto old_size = old_list.size();
+		auto new_size = new_list.size();
+		auto long_size = (old_size > new_size ? old_size : new_size);
+		auto& long_list = (old_size > new_size ? old_list : new_list);
+		auto& short_list = (old_size < new_size ? old_list : new_list);
+		state = (old_size > new_size ? 0 : 1);
+
+		std::vector<std::pair<std::string, bool>> mark_list;
+		for (auto name : long_list) {
+			mark_list.push_back(std::make_pair(name, false));
+			PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "long list name: %s.", name.c_str());
+		}
+
+		for (auto name : short_list) {
+			PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "short list name: %s.", name.c_str());
+		}
+
+		for (auto& mark_name : mark_list) {
+			for (auto name : short_list) {
+				if (name == mark_name.first) {
+					mark_name.second = true;
+				}
+			}
+		}
+
+		int idx = -1;
+		for (int i = 0; i < mark_list.size(); i++) {
+			if (!mark_list[i].second) {
+				if (idx == -1) {
+					idx = i;
+					changed_device = mark_list[i].first;
+				} else {
+					PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "more then one device changed.");
+				}
+			}
+		}
+
+		return (idx != -1 ? true : false);
+	};
+
+	if (deviceType == agora::rtc::MEDIA_DEVICE_TYPE::VIDEO_CAPTURE_DEVICE) {
+		std::vector<CameraInfo> camera_list;
 		GetCameraList(camera_list);
+
+		std::vector<std::string> old_list;
+		for (auto name : camera_list_) {
+			old_list.push_back(name.device_id);
+		}
+		std::vector<std::string> new_list;
+		for (auto name : camera_list) {
+			new_list.push_back(name.device_id);
+		}
+
+		std::string changed_device;
+		int state = -1;
+		if (findChangedDevice(deviceType, old_list, new_list, changed_device, state)) {
+			onMediaDeviceStateChanged(deviceType, changed_device, state);
+			camera_list_ = camera_list;
+		}
+
 		for (int i = 0; i < camera_list.size(); i++) {
 			if (current_camera_.device_id == camera_list[i].device_id) {
 				current_camera_.idx = i;
@@ -1078,6 +1180,44 @@ void CAgoraManager::onMediaDeviceChanged(int deviceType, conn_id_t connId) {
 			}
 		}
 		StopPushCamera();
+	} else if (deviceType == agora::rtc::MEDIA_DEVICE_TYPE::AUDIO_RECORDING_DEVICE) {
+		std::vector<MicInfo> mic_list;
+		GetMicList(mic_list);
+
+		std::vector<std::string> old_list;
+		for (auto name : mic_list_) {
+			old_list.push_back(name.device_id);
+		}
+		std::vector<std::string> new_list;
+		for (auto name : mic_list) {
+			new_list.push_back(name.device_id);
+		}
+
+		std::string changed_device;
+		int state = -1;
+		if (findChangedDevice(deviceType, old_list, new_list, changed_device, state)) {
+			onMediaDeviceStateChanged(deviceType, changed_device, state);
+			mic_list_ = mic_list;
+		}
+	} else if (deviceType == agora::rtc::MEDIA_DEVICE_TYPE::AUDIO_PLAYOUT_DEVICE) {
+		std::vector<PlaybackInfo> playback_list;
+		GetPlaybackList(playback_list);
+
+		std::vector<std::string> old_list;
+		for (auto name : playback_list_) {
+			old_list.push_back(name.device_id);
+		}
+		std::vector<std::string> new_list;
+		for (auto name : playback_list) {
+			new_list.push_back(name.device_id);
+		}
+
+		std::string changed_device;
+		int state = -1;
+		if (findChangedDevice(deviceType, old_list, new_list, changed_device, state)) {
+			onMediaDeviceStateChanged(deviceType, changed_device, state);
+			playback_list_ = playback_list;
+		}
 	}
 }
 
@@ -1104,6 +1244,10 @@ void CAgoraManager::onFirstLocalVideoFramePublished(int elapsed, conn_id_t connI
 
 void CAgoraManager::onFirstLocalAudioFramePublished(int elapsed, conn_id_t connId) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onFirstLocalAudioFramePublished, elapsed: %d, connId: %d.", elapsed, connId);
+}
+
+void CAgoraManager::onMediaDeviceStateChanged(int deviceType, std::string deviceId, int state) {
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onMediaDeviceStateChanged, deviceType: %d, deviceId: %s, state: %d.", deviceType, deviceId.c_str(), state);
 }
 	
 void CAgoraManager::ResetStates() {
