@@ -678,19 +678,90 @@ void CSDKdemoDlg::OnBnClickedEnumDisplay()
 	m_agoraManager->GetDesktopList(vDesktop, 600, 400);
 }
 
+void DrawImage2Window(HWND hDest, RECT destRect, CAgoraManager::WindowInfo* winInfo)
+{
+	HBITMAP hBitmap = ::CreateBitmap(winInfo->thumbBGRA.width, winInfo->thumbBGRA.height, 1, 32, winInfo->thumbBGRA.buffer.data());
+	HDC hWndDC = ::GetDC(hDest);
+	HDC hMemDc = ::CreateCompatibleDC(hWndDC);
+	HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hMemDc, hBitmap);
+	//::BitBlt(hWndDC, 0, 0, header.width, header.height, hMemDc, 0, 0, SRCCOPY);
+	SetStretchBltMode(hWndDC, HALFTONE);
+	::StretchBlt(hWndDC, destRect.left, destRect.top, 
+		destRect.right - destRect.left, destRect.bottom - destRect.top, 
+		hMemDc, 0, 0, winInfo->thumbBGRA.width, winInfo->thumbBGRA.height, SRCCOPY);
+
+	::SelectObject(hMemDc, hOldBitmap);
+	::DeleteObject(hBitmap);
+	::DeleteDC(hMemDc);
+	::ReleaseDC(hDest, hWndDC);
+}
+
+const int IMAGE_WIDTH = 200;
+const int IMAGE_HEIGHT = 200;
+
+void LayoutWindow(std::vector<CAgoraManager::WindowInfo>& wndList, HWND hDestWnd, int& outWidth, int& outHeight, BOOL bDraw)
+{
+	int padding = 10;
+	int startXPos = 20;
+	int startYPos = 20;
+	int lastX = startXPos;
+	int lastY = startYPos;
+
+	RECT rcDraw;
+	::GetClientRect(hDestWnd, &rcDraw);
+	outWidth = rcDraw.right - rcDraw.left;
+	outHeight = rcDraw.bottom - rcDraw.top;
+	for (int i = 0; i < wndList.size(); i++) {
+		RECT rcDest;
+		rcDest.left = lastX;
+		rcDest.right = rcDest.left + IMAGE_WIDTH;
+
+		lastX += padding + IMAGE_WIDTH;
+		if (rcDest.right > outWidth) {
+			lastX = startXPos;
+			rcDest.left = lastX;
+			rcDest.right = rcDest.left + IMAGE_WIDTH;
+			lastY += IMAGE_HEIGHT + padding;
+			lastX = rcDest.right;
+		}
+
+		rcDest.top = lastY;
+		rcDest.bottom = rcDest.top + IMAGE_HEIGHT;
+		if (rcDest.bottom > outHeight) {
+			outHeight = rcDest.bottom + padding;
+		}
+
+		char buff[256];
+		_snprintf(buff, 256, "Index: %d, left:%d, top:%d, right:%d, bottom:%d, path=%s\n", i, rcDest.left, rcDest.top, rcDest.right, rcDest.bottom, wndList[i].sourceName.c_str());
+		OutputDebugStringA(buff);
+
+		if(bDraw)
+			DrawImage2Window(hDestWnd, rcDest, &wndList[i]);
+	}
+}
+
 
 void CSDKdemoDlg::OnBnClickedEnumWin()
 {
+	static SimpleWindow* pImageWnd = NULL;
+	if (pImageWnd != NULL)
+		delete pImageWnd;
+
+	
 	std::vector<CAgoraManager::WindowInfo> wndList;
-	m_agoraManager->GetWindowList(wndList, 600, 400, 64, 64);
-	/*using namespace app::utils;
-	using ListWindowsInfo = std::list<WindowEnumer::WINDOW_INFO>;
-	using MapWindowInfo = std::map<std::string, std::list<WindowEnumer::WINDOW_INFO>>;
+	m_agoraManager->GetWindowList(wndList, IMAGE_WIDTH, IMAGE_HEIGHT, 64, 64);
 
-	std::list<std::string> vecFilters;
-	MapWindowInfo mapWindows = app::utils::WindowEnumer::EnumAllWindows(vecFilters, 600, 400, 64, 64);
+	pImageWnd = new SimpleWindow("ScaleImage");
 
-	int winNum = mapWindows.size();*/
+	RECT rcDraw;
+	::GetClientRect(pImageWnd->GetView(), &rcDraw);
+	int sourceHeight = rcDraw.bottom - rcDraw.top;
+	int targetWidth = 0, targetHeight = 0;
+	LayoutWindow(wndList, pImageWnd->GetView(), targetWidth, targetHeight, FALSE);
+	if (sourceHeight < targetHeight) {
+		::SetWindowPos(pImageWnd->GetView(), NULL, 0, 0, targetWidth, targetHeight, SWP_NOACTIVATE | SWP_NOMOVE);
+	}
+	LayoutWindow(wndList, pImageWnd->GetView(), targetWidth, targetHeight, TRUE);
 }
 
 
