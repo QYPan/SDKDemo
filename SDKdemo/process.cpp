@@ -316,8 +316,6 @@ bool DrawThumbToWindow(HWND hDestWnd, HWND hTargetWnd, int maxWidth, int maxHeig
 	prop.rcDestination = rcDest;
 	prop.rcSource = { 0, 0, sw, sh };
 
-	//::ShowWindow(hDestWnd, SW_SHOW);
-	//::ShowWindow(hDestWnd, SW_HIDE);
 	::SetWindowPos(hDestWnd, NULL, -3000, -3000, destWidth, destHeight, SWP_NOACTIVATE);
 	HRESULT hr = ::DwmUpdateThumbnailProperties(thumbNail, &prop);
 	

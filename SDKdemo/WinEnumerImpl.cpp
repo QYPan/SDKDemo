@@ -12,6 +12,7 @@
 
 #include "process.h"
 #include "SimpleWindow.h"
+#include "MagnificationCapture.h"
 
 using namespace app::utils;
 
@@ -212,13 +213,41 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 		SendMessage(simplewnd->GetView(), WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
 	}
 	else {
-		// 获取窗口缩略图
-		uint8_t* thumbdata = NULL;
-		uint32_t width, height;
-		if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
-			StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height,
-				(const char*)thumbdata, info.thumb.data);
-			delete[] thumbdata;
+		std::string pathName = info.moduleName;
+		_strupr((char*)pathName.c_str());
+		if (pathName.rfind("QQ.EXE") != std::string::npos) {
+			MagnificationCapture magCapture;
+			magCapture.LoadMagnificationLibrary();
+
+			RECT rc;
+			::GetWindowRect(hwnd, &rc);
+			if(magCapture.CaptureFrame(hwnd, rc)){
+				int width, height;
+				std::vector<BYTE> imgData;
+				magCapture.GetFrameInfo(width, height, imgData);
+
+				uint8_t *bitmap_data = imgData.data();
+				uint8_t* temp = new uint8_t[width * 4];
+				for (int row = height >> 1; row >= 0; row--) {
+					memcpy(temp, bitmap_data + width * 4 * row, width * 4);
+					memcpy(bitmap_data + width * 4 * row, bitmap_data + width * 4 * (height - row - 1), width * 4);
+					memcpy(bitmap_data + width * 4 * (height - row - 1), temp, width * 4);
+				}
+				delete[] temp;
+
+				StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height,
+					(const char*)&imgData[0], info.thumb.data);
+			}
+		}
+		else {
+			// 获取窗口缩略图
+			uint8_t* thumbdata = NULL;
+			uint32_t width, height;
+			if (GetWindowImageGDI(hwnd, &thumbdata, width, height)) {
+				StretchBitmap(window_dc, win_infos->fillWidth, win_infos->fillHeight, width, height,
+					(const char*)thumbdata, info.thumb.data);
+				delete[] thumbdata;
+			}
 		}
 	}
 	

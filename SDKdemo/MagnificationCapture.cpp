@@ -231,23 +231,23 @@ void MagnificationCapture::OnCaptured(void * data, const MAGIMAGEHEADER & header
 	cache_img.resize(header.cbSize);
 	memcpy(&cache_img[0], data, header.cbSize);
 
-	static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
+	//static SimpleWindow* pImageWnd = new SimpleWindow("ScaleImage");
 
-	HWND hWnd = pImageWnd->GetView();
-	HBITMAP hBitmap = ::CreateBitmap(header.width, header.height, 1, 32, data);
-	HDC hWndDC = ::GetDC(hWnd);
-	HDC hMemDc = ::CreateCompatibleDC(hWndDC);
-	HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hMemDc, hBitmap);
-	//::BitBlt(hWndDC, 0, 0, header.width, header.height, hMemDc, 0, 0, SRCCOPY);
-	SetStretchBltMode(hWndDC, HALFTONE);
-	::StretchBlt(hWndDC, 0, 0, 1280, 720, hMemDc, 0, 0, header.width, header.height, SRCCOPY);
+	//HWND hWnd = pImageWnd->GetView();
+	//HBITMAP hBitmap = ::CreateBitmap(header.width, header.height, 1, 32, data);
+	//HDC hWndDC = ::GetDC(hWnd);
+	//HDC hMemDc = ::CreateCompatibleDC(hWndDC);
+	//HBITMAP hOldBitmap = (HBITMAP)::SelectObject(hMemDc, hBitmap);
+	////::BitBlt(hWndDC, 0, 0, header.width, header.height, hMemDc, 0, 0, SRCCOPY);
+	//SetStretchBltMode(hWndDC, HALFTONE);
+	//::StretchBlt(hWndDC, 0, 0, 1280, 720, hMemDc, 0, 0, header.width, header.height, SRCCOPY);
 
-	::SelectObject(hMemDc, hOldBitmap);
-	::DeleteObject(hBitmap);
-	::DeleteDC(hMemDc);
-	::ReleaseDC(hWnd, hWndDC);
+	//::SelectObject(hMemDc, hOldBitmap);
+	//::DeleteObject(hBitmap);
+	//::DeleteDC(hMemDc);
+	//::ReleaseDC(hWnd, hWndDC);
 
-	Sleep(2000);
+	//Sleep(2000);
 }
 
 BOOL MagnificationCapture::GetFrameInfo(int & imgWidth, int & imgHeight, std::vector<BYTE>& imgData)
