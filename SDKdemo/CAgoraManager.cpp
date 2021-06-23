@@ -227,7 +227,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 	op.publishScreenTrack = false; 
 	op.autoSubscribeAudio = false;
 	op.autoSubscribeVideo = false;
-	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 	int ret = rtc_engine_->joinChannel(lpToken, lpChannelId, uid, op);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannel, channel: %s, uid: %u, ret: %d.", lpChannelId, uid, ret);
 
@@ -245,7 +245,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.publishScreenTrack = false;
 		op.autoSubscribeAudio = false;
 		op.autoSubscribeVideo = false;
-		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 
 		ret1 = rtc_engine_->joinChannelEx(lpSubToken, lpChannelId, uidSub, op, screen_event_handler_, &screen_connId_);
 		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannelEx, channel: %s, uid: %u, ret1: %d.", lpChannelId, uidSub, ret1);
@@ -267,7 +267,7 @@ bool CAgoraManager::JoinChannel(const char* lpChannelId,
 		op.publishScreenTrack = false;
 		op.autoSubscribeAudio = false;
 		op.autoSubscribeVideo = false;
-		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 
 		ret2 = rtc_engine_->joinChannelEx(lpSrcToken, lpChannelId, uidSrc, op, custom_event_handler_, &custom_connId_);
 		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "joinChannelEx, channel: %s, uid: %u, ret2: %d.", lpChannelId, uidSrc, ret2);
@@ -359,19 +359,20 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 		return true;
 	}
 
+	SetPushCamera(current_camera_.idx);
+	ChannelMediaOptions op;
+	op.publishAudioTrack = bWithMic;
+	op.publishCameraTrack = true;
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
+	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
+	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
+
 	rtc_engine_->enableLocalVideo(true);
 
 	if (bWithMic) {
 		rtc_engine_->enableLocalAudio(true);
 		is_publish_camera_audio_ = true;
 	}
-
-	SetPushCamera(current_camera_.idx);
-	ChannelMediaOptions op;
-	op.publishAudioTrack = bWithMic;
-	op.publishCameraTrack = true;
-	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
-	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
 	if (ret == 0) {
 		is_publish_camera_ = true;
@@ -401,6 +402,7 @@ bool CAgoraManager::StopPushCamera() {
 	}
 
 	op.publishCameraTrack = false;
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, camera_connId_);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
@@ -465,6 +467,7 @@ bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 		ChannelMediaOptions op;
 		op.publishScreenTrack = true;
 		op.publishAudioTrack = bWithMic;
+		op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 
 		if (bWithMic) {
 			rtc_engine_->enableLocalAudio(true);
@@ -534,7 +537,7 @@ bool CAgoraManager::StopPushScreen() {
 	}
 
 	op.publishScreenTrack = false;
-
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, screen_connId_);
 
 	is_publish_screen_ = false;
@@ -1144,6 +1147,7 @@ bool CAgoraManager::StartPushCustom()
 	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = true;
 	op.publishCustomVideoTrack = true;
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_BROADCASTER;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
@@ -1163,6 +1167,7 @@ bool CAgoraManager::StopPushCustom()
 	ChannelMediaOptions op;
 	op.publishCustomAudioTrack = false;
 	op.publishCustomVideoTrack = false;
+	op.clientRoleType = CLIENT_ROLE_TYPE::CLIENT_ROLE_AUDIENCE;
 	int ret = rtc_engine_->updateChannelMediaOptions(op, custom_connId_);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateChannelMediaOptions, ret: %d.", ret);
 
