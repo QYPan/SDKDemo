@@ -803,7 +803,14 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	std::unique_ptr<agora::rtc::IVideoDeviceCollection> vdc(vdm_->enumerateVideoDevices());
+	std::unique_ptr<agora::rtc::IVideoDeviceCollection> vdc;
+	if (vdm_) {
+	  vdc.reset(vdm_->enumerateVideoDevices());
+	}
+	if (!vdc) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create vdc failed!");
+		return;
+	}
 
 	int count = vdc->getCount();
 	if (count <= 0) {
@@ -844,7 +851,14 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(adm_->enumerateRecordingDevices());
+	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc;
+	if (adm_) {
+		adc.reset(adm_->enumerateRecordingDevices());
+	}
+	if (!adc) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create adc failed!");
+		return;
+	}
 
 	int count = adc->getCount();
 	if (count <= 0) {
@@ -871,7 +885,14 @@ void CAgoraManager::GetPlaybackList(std::vector<PlaybackInfo>& vPlayback) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(adm_->enumeratePlaybackDevices());
+	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc;
+	if (adm_) {
+		adc.reset(adm_->enumeratePlaybackDevices());
+	}
+	if (!adc) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create adc failed!");
+		return;
+	}
 
 	int count = adc->getCount();
 	if (count <= 0) {
