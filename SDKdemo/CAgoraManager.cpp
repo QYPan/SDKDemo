@@ -376,7 +376,7 @@ void CAgoraManager::UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFram
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setVideoEncoderConfiguration, ret: %d.", ret);
 }
 
-bool CAgoraManager::StartPushCamera(bool bWithMic) {
+bool CAgoraManager::StartPushCamera(bool bWithMic, bool bReverseX) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: bWithMic: %d.", __FUNCTION__, bWithMic);
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
@@ -386,6 +386,14 @@ bool CAgoraManager::StartPushCamera(bool bWithMic) {
 	}
 
 	SetPushCamera(current_camera_.idx);
+	VideoEncoderConfiguration cfg;
+	if (bReverseX) {
+		cfg.mirrorMode = agora::rtc::VIDEO_MIRROR_MODE_ENABLED;
+	} else {
+		cfg.mirrorMode = agora::rtc::VIDEO_MIRROR_MODE_DISABLED;
+	}
+	rtc_engine_->setVideoEncoderConfiguration(cfg, camera_connId_);
+
 	ChannelMediaOptions op;
 	op.publishAudioTrack = bWithMic;
 	op.publishCameraTrack = true;
@@ -788,6 +796,11 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nCamID: %d.", __FUNCTION__, nCamID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
+	if (!vdm_) {
+	  PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "vdm is null!");
+	  return;
+	}
+
 	std::vector<CameraInfo> camera_list;
 	GetCameraList(camera_list);
 	for (int i = 0; i < camera_list.size(); i++) {
@@ -836,6 +849,11 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 void CAgoraManager::SetMic(int nID) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nID.", __FUNCTION__, nID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
+	if (!adm_) {
+	  PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "adm is null!");
+	  return;
+	}
 
 	std::vector<MicInfo> mic_list;
 	GetMicList(mic_list);
@@ -926,6 +944,11 @@ void CAgoraManager::SetMicVolume(int nVol) {
 void CAgoraManager::SetSystemMicVolume(int nVol) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nVol: %d.", __FUNCTION__, nVol);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
+
+	if (!adm_) {
+	  PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "adm is null!");
+	  return;
+	}
 
 	int ret = adm_->setRecordingDeviceVolume(nVol);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setRecordingDeviceVolume, ret: %d.", ret);

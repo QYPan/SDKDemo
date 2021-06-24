@@ -125,7 +125,7 @@ public:
 
 
 	//…„œÒÕ∑œ‡πÿ
-	bool StartPushCamera(bool bWithMic = true);
+	bool StartPushCamera(bool bWithMic = true, bool bReverseX = false);
 	void UpdatePushCameraConfig(int nPushW, int nPushH, int nPushFrameRate);
 	bool StopPushCamera();
 	bool IsPushCamera();
