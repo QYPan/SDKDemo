@@ -161,6 +161,24 @@ bool CAgoraManager::Init(const char* lpAppID) {
 
 	initialized_ = true;
 
+	agora::rtc::IVideoDeviceManager* vdm = nullptr;
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
+		reinterpret_cast<void**>(&vdm));
+	if (!vdm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get vdm!");
+	}
+
+	vdm_.reset(vdm);
+
+	agora::rtc::IAudioDeviceManager* adm = nullptr;
+	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
+		reinterpret_cast<void**>(&adm));
+	if (!adm) {
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
+	}
+
+	adm_.reset(adm);
+
 	GetCameraList(camera_list_);
 	GetMicList(mic_list_);
 	GetPlaybackList(playback_list_);
@@ -202,6 +220,9 @@ void CAgoraManager::Release() {
 		delete video_frame_observer_;
 		video_frame_observer_ = nullptr;
 	}
+
+	vdm_.reset();
+	adm_.reset();
 
 	ResetStates();
 
@@ -767,21 +788,11 @@ void CAgoraManager::SetPushCamera(int nCamID) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nCamID: %d.", __FUNCTION__, nCamID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IVideoDeviceManager* vdm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&vdm));
-	if (!vdm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get vdm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IVideoDeviceManager> video_device_manager(vdm);
-
 	std::vector<CameraInfo> camera_list;
 	GetCameraList(camera_list);
 	for (int i = 0; i < camera_list.size(); i++) {
 		if (nCamID == camera_list[i].idx) {
-			video_device_manager->setDevice(camera_list[i].device_id.c_str());
+			vdm_->setDevice(camera_list[i].device_id.c_str());
 			current_camera_ = CameraInfo{i, camera_list[i].device_id, ""};
 			break;
 		}
@@ -792,16 +803,7 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IVideoDeviceManager* vdm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_VIDEO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&vdm));
-	if (!vdm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get vdm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IVideoDeviceManager> video_device_manager(vdm);
-	std::unique_ptr<agora::rtc::IVideoDeviceCollection> vdc(video_device_manager->enumerateVideoDevices());
+	std::unique_ptr<agora::rtc::IVideoDeviceCollection> vdc(vdm_->enumerateVideoDevices());
 
 	int count = vdc->getCount();
 	if (count <= 0) {
@@ -828,21 +830,11 @@ void CAgoraManager::SetMic(int nID) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nID.", __FUNCTION__, nID);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IAudioDeviceManager* adm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&adm));
-	if (!adm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
-
 	std::vector<MicInfo> mic_list;
 	GetMicList(mic_list);
 	for (int i = 0; i < mic_list.size(); i++) {
 		if (nID == mic_list[i].idx) {
-			audio_device_manager->setRecordingDevice(mic_list[i].device_id.c_str());
+			adm_->setRecordingDevice(mic_list[i].device_id.c_str());
 			break;
 		}
 	}
@@ -852,16 +844,7 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IAudioDeviceManager* adm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&adm));
-	if (!adm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
-	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(audio_device_manager->enumerateRecordingDevices());
+	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(adm_->enumerateRecordingDevices());
 
 	int count = adc->getCount();
 	if (count <= 0) {
@@ -888,16 +871,7 @@ void CAgoraManager::GetPlaybackList(std::vector<PlaybackInfo>& vPlayback) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s", __FUNCTION__);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IAudioDeviceManager* adm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&adm));
-	if (!adm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
-	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(audio_device_manager->enumeratePlaybackDevices());
+	std::unique_ptr<agora::rtc::IAudioDeviceCollection> adc(adm_->enumeratePlaybackDevices());
 
 	int count = adc->getCount();
 	if (count <= 0) {
@@ -932,16 +906,7 @@ void CAgoraManager::SetSystemMicVolume(int nVol) {
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_FUNC, "%s: nVol: %d.", __FUNCTION__, nVol);
 	RETURN_IF_ENGINE_NOT_INITIALIZED()
 
-	agora::rtc::IAudioDeviceManager* adm = nullptr;
-	rtc_engine_->queryInterface(agora::rtc::AGORA_IID_AUDIO_DEVICE_MANAGER,
-		reinterpret_cast<void**>(&adm));
-	if (!adm) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "failed to get adm!");
-		return;
-	}
-
-	std::unique_ptr<agora::rtc::IAudioDeviceManager> audio_device_manager(adm);
-	int ret = audio_device_manager->setRecordingDeviceVolume(nVol);
+	int ret = adm_->setRecordingDeviceVolume(nVol);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "setRecordingDeviceVolume, ret: %d.", ret);
 }
 

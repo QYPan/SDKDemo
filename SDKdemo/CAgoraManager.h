@@ -293,6 +293,9 @@ private:
 	std::vector<MicInfo> mic_list_;
 	std::vector<PlaybackInfo> playback_list_;
 
+	std::unique_ptr<agora::rtc::IVideoDeviceManager> vdm_;
+	std::unique_ptr<agora::rtc::IAudioDeviceManager> adm_;
+
 	conn_id_t camera_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 	conn_id_t screen_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
 	conn_id_t custom_connId_ = agora::rtc::DUMMY_CONNECTION_ID;
