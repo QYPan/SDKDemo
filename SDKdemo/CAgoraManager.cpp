@@ -808,7 +808,7 @@ void CAgoraManager::GetCameraList(std::vector<CameraInfo>& vCamera) {
 	  vdc.reset(vdm_->enumerateVideoDevices());
 	}
 	if (!vdc) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create vdc failed!");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not create vdc.");
 		return;
 	}
 
@@ -856,7 +856,7 @@ void CAgoraManager::GetMicList(std::vector<MicInfo>& vMic) {
 		adc.reset(adm_->enumerateRecordingDevices());
 	}
 	if (!adc) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create adc failed!");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not create adc.");
 		return;
 	}
 
@@ -890,7 +890,7 @@ void CAgoraManager::GetPlaybackList(std::vector<PlaybackInfo>& vPlayback) {
 		adc.reset(adm_->enumeratePlaybackDevices());
 	}
 	if (!adc) {
-		PRINT_LOG(SimpleLogger::LOG_TYPE::L_ERROR, "create adc failed!");
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_WARN, "can not create adc.");
 		return;
 	}
 
