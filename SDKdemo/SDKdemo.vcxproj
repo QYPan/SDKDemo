@@ -23,7 +23,7 @@
     <ProjectGuid>{AAA760DF-FED0-4A15-AF95-B6165B955004}</ProjectGuid>
     <Keyword>MFCProj</Keyword>
     <RootNamespace>SDKdemo</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -204,6 +204,7 @@
     <ClInclude Include="SimpleWindow.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="TaskWindow.h" />
     <ClInclude Include="VideoFrameObserver.h" />
     <ClInclude Include="WinEnumerImpl.h" />
   </ItemGroup>
@@ -221,6 +222,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="TaskWindow.cpp" />
     <ClCompile Include="VideoFrameObserver.cpp" />
     <ClCompile Include="WinEnumerImpl.cpp" />
   </ItemGroup>

@@ -750,7 +750,6 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 	
 	std::vector<CAgoraManager::WindowInfo> wndList;
 	m_agoraManager->GetWindowList(wndList, IMAGE_WIDTH, IMAGE_HEIGHT, 64, 64);
-
 	pImageWnd = new SimpleWindow("ScaleImage");
 
 	RECT rcDraw;

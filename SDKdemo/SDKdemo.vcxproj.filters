@@ -54,6 +54,9 @@
     <ClInclude Include="MagnificationCapture.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="TaskWindow.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SDKdemo.cpp">
@@ -84,6 +87,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MagnificationCapture.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TaskWindow.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

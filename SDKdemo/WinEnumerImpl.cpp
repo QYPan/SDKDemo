@@ -13,6 +13,7 @@
 #include "process.h"
 #include "SimpleWindow.h"
 #include "MagnificationCapture.h"
+#include "TaskWindow.h"
 
 using namespace app::utils;
 
@@ -208,9 +209,10 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 	}
 
 	if (IsWindows8OrLater()) {
-		static SimpleWindow* simplewnd = new SimpleWindow("background");
-		DrawThumbToWindow(simplewnd->GetView(), hwnd, info.thumb.width, info.thumb.height);
-		SendMessage(simplewnd->GetView(), WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
+		//static SimpleWindow* simpleWnd = new SimpleWindow("background");
+		static TaskWindow* simpleWnd = new TaskWindow();
+		DrawThumbToWindow(*simpleWnd, hwnd, info.thumb.width, info.thumb.height);
+		SendMessage(*simpleWnd, WM_KEYDOWN, VK_DELETE, (LPARAM)&info.thumb);
 	}
 	else {
 		std::string pathName = info.moduleName;
