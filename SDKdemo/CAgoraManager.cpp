@@ -309,7 +309,6 @@ bool CAgoraManager::LeaveChannel() {
 	RETURN_FALSE_IF_ENGINE_NOT_INITIALIZED()
 
 	int ret = rtc_engine_->leaveChannel();
-	printf("[I]: leaveChannel, ret: %d\n", ret);
 
 	if (is_enable_video_observer_ && video_frame_observer_) {
 		video_frame_observer_->uninit();
@@ -1235,7 +1234,6 @@ void CAgoraManager::onLocalVideoStateChanged(LOCAL_VIDEO_STREAM_STATE state, LOC
 }
 
 void CAgoraManager::onLocalAudioStateChanged(LOCAL_AUDIO_STREAM_STATE state, LOCAL_AUDIO_STREAM_ERROR error, conn_id_t connId) {
-	printf("[I]: onLocalAudioStateChanged, state: %d, error: %d, connId: %d\n", state, error, connId);
 	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "onLocalVideoStateChanged, deviceType: %d, connId: %d.", state, error, connId);
 }
 
