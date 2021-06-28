@@ -686,8 +686,10 @@ void CAgoraManager::SetPushFilter(HWND* pFilterHwndList, int nFilterNum) {
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
 
-	int ret = rtc_engine_->updateScreenCaptureParameters(param_);
-	PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateScreenCaptureParameters, ret: %d.", ret);
+	if (IsPushScreen()) {
+		int ret = rtc_engine_->updateScreenCaptureParameters(param_);
+		PRINT_LOG(SimpleLogger::LOG_TYPE::L_INFO, "updateScreenCaptureParameters, ret: %d.", ret);
+	}
 }
 
 bool CAgoraManager::IsPushScreen() {
