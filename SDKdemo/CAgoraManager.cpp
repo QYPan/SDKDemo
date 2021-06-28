@@ -45,8 +45,6 @@ public:
 	L_FUNC
   };
 
-  std::string GetLogPath() { return log_path_; }
-
   void Print(LOG_TYPE type, const char* fmt, ...) {
     if (!fmt || !*fmt) {
       return;
@@ -79,16 +77,7 @@ public:
 
 private:
   SimpleLogger() {
-	std::string log_file("AgoraManager.log");
-	char buffer[MAX_PATH];
-    ::GetModuleFileNameA(NULL, buffer, MAX_PATH);
-    std::string::size_type pos = std::string(buffer).find_last_of("\\/");
-	if (pos != std::string::npos) {
-	  log_path_ = std::string(buffer).substr(0, pos + 1) + std::string("AgoraLog");
-	  CreateDirectoryA(log_path_.c_str(), NULL);
-	  log_file = log_path_ + std::string("\\AgoraManager.log");
-	}
-    writer_.open(log_file, std::ofstream::out);
+    writer_.open("AgoraManager.log", std::ofstream::out);
   }
 
   ~SimpleLogger() {
@@ -97,7 +86,6 @@ private:
 
   static SimpleLogger *instance_;
   std::ofstream writer_;
-  std::string log_path_;
 };
 
 SimpleLogger* SimpleLogger::instance_ = nullptr;
@@ -143,14 +131,6 @@ bool CAgoraManager::Init(const char* lpAppID) {
 	camera_connId_ = DEFAULT_CONNECTION_ID;
 
 	RtcEngineContext ctx;
-	std::string log_path = SimpleLogger::GetInstance()->GetLogPath() + std::string("\\");
-	if (log_path.length() > 1) {
-	  agora::commons::LogConfig log_cfg;
-	  log_cfg.filePath = log_path.c_str();
-	  // You can update the log size limit, default is 1024KB.
-	  // log_cfg.fileSizeInKB = xxx;
-	  ctx.logConfig = log_cfg;
-	}
 
 	ctx.eventHandler = camera_event_handler_;
 	ctx.appId = lpAppID;

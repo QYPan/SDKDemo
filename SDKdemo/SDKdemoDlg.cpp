@@ -556,7 +556,6 @@ void CSDKdemoDlg::OnBnClickedButtonPublishScreen()
 	}
 	else
 	{
-		m_agoraManager->SetPushWindow((HWND)0x0015115C);
 		m_agoraManager->StartPushScreen(true);
 		m_btnPublishScreen.SetWindowText(_T("Unpublish Screen"));
 	}
