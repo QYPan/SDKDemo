@@ -67,11 +67,11 @@ public:
       return;
     }
 
-	static std::map<LOG_TYPE, std::string> log_type_map = {{L_INFO, "[I]: "},{L_WARN, "[W]: "},{L_ERROR, "[E]: "}, {L_FUNC, "[F]: "}};
+	static std::map<LOG_TYPE, std::string> log_type_map = {{L_INFO, "[I]:"},{L_WARN, "[W]:"},{L_ERROR, "[E]:"}, {L_FUNC, "[F]:"}};
 	SYSTEMTIME sysTime = { 0 };
 	GetLocalTime(&sysTime);
 	char strtime[64] = { 0 };
-	_snprintf_s(strtime, 100, " [%04d/%02d/%02d %02d:%02d:%02d:%02d] ", sysTime.wYear, sysTime.wMonth, sysTime.wDay,
+	_snprintf_s(strtime, 64, " [%04d/%02d/%02d %02d:%02d:%02d:%02d] ", sysTime.wYear, sysTime.wMonth, sysTime.wDay,
 		sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
 
     std::string msg(buf.get());
