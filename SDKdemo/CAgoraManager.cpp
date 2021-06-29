@@ -68,10 +68,15 @@ public:
     }
 
 	static std::map<LOG_TYPE, std::string> log_type_map = {{L_INFO, "[I]: "},{L_WARN, "[W]: "},{L_ERROR, "[E]: "}, {L_FUNC, "[F]: "}};
+	SYSTEMTIME sysTime = { 0 };
+	GetLocalTime(&sysTime);
+	char strtime[64] = { 0 };
+	_snprintf_s(strtime, 100, " [%04d/%02d/%02d %02d:%02d:%02d:%02d] ", sysTime.wYear, sysTime.wMonth, sysTime.wDay,
+		sysTime.wHour, sysTime.wMinute, sysTime.wSecond, sysTime.wMilliseconds);
 
     std::string msg(buf.get());
     if (writer_.is_open()) {
-      writer_ << log_type_map[type] << msg << std::endl;
+      writer_ << log_type_map[type] << strtime << "[" << ::GetCurrentThreadId() << "] " << msg << std::endl;
     }
   }
 

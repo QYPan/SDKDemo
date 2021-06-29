@@ -20,6 +20,8 @@
 #include <string>
 #include <sstream>
 #include <gdiplus.h>
+#include <atlbase.h>
+#include <atlstr.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -178,6 +180,11 @@ BOOL CSDKdemoDlg::OnInitDialog()
 
 	initCtrls();
 	initData();
+
+	//AllocConsole();
+	//FILE* stream;
+	//freopen_s(&stream, "CON", "r", stdin);//重定向输入流
+	//freopen_s(&stream, "CON", "w", stdout);//重定向输入流
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -761,6 +768,12 @@ void CSDKdemoDlg::OnBnClickedEnumWin()
 		::SetWindowPos(pImageWnd->GetView(), NULL, 0, 0, targetWidth, targetHeight, SWP_NOACTIVATE | SWP_NOMOVE);
 	}
 	LayoutWindow(wndList, pImageWnd->GetView(), targetWidth, targetHeight, TRUE);
+
+	/*for (int i = 0; i < wndList.size(); i++) {
+		std::wstring sourceName = CA2TEX<256>(wndList[i].sourceName.c_str(), CP_UTF8);
+		std::string sourceNameA = CT2AEX<256>(sourceName.c_str(), CP_ACP);
+		printf("[%d] %s\n", i+1, sourceNameA.c_str());
+	}*/
 }
 
 

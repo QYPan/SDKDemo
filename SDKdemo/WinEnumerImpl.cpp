@@ -132,6 +132,12 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
     if (!::IsWindowVisible(hwnd))
       break;
 
+	TCHAR class_name[MAX_PATH]{ 0 };
+	::GetClassName(hwnd, class_name, MAX_PATH);
+
+	TCHAR window_name[MAX_PATH]{ 0 };
+	::GetWindowText(hwnd, window_name, MAX_PATH);
+
     if (IsInvisibleWin10BackgroundAppWindow(hwnd))
       break;
 
@@ -139,8 +145,9 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
     styles = (DWORD)GetWindowLongPtr(hwnd, GWL_STYLE);
     ex_styles = (DWORD)GetWindowLongPtr(hwnd, GWL_EXSTYLE);
 
-    if (ex_styles & WS_EX_TOOLWINDOW)
-      break;
+	if (ex_styles & WS_EX_TOOLWINDOW)
+		break;
+      
     if (styles & WS_CHILD)
       break;
 
@@ -149,14 +156,8 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 
     RECT rc;
     ::GetWindowRect(hwnd, &rc);
-    if (::IsRectEmpty(&rc))
-      break;
-
-    TCHAR class_name[MAX_PATH]{ 0 };
-    ::GetClassName(hwnd, class_name, MAX_PATH);
-
-    TCHAR window_name[MAX_PATH]{ 0 };
-    ::GetWindowText(hwnd, window_name, MAX_PATH);
+	if (::IsRectEmpty(&rc))
+		break;
 
     if (_tcscmp(class_name, L"TaskManagerWindow") == 0)
       break;
@@ -166,20 +167,25 @@ BOOL WINAPI WindowEnumCallback(HWND hwnd,
 
     DWORD process_id = 0;
     GetWindowThreadProcessId(hwnd, &process_id);
-    if (0 == process_id)
-      break;
+	if (0 == process_id) {
+		break;
+	}
 
     HANDLE process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process_id);
-    if (!process)
-      break;
+	if (!process) {
+		break;
+	}
+      
 
     TCHAR module_name[MAX_PATH]{ 0 };
-    DWORD ret = GetModuleFileNameEx(process, NULL, module_name, MAX_PATH - 1);
+   // DWORD ret = GetModuleFileNameEx(process, NULL, module_name, MAX_PATH - 1);
 
+	DWORD dwSize = MAX_PATH;
+	DWORD ret = QueryFullProcessImageName(process, 0, module_name, &dwSize);
     CloseHandle(process);
 
-    if (0 == ret)
-      break;
+	if (0 == ret)
+		break;
 
 	WindowEnumer::WINDOWS_ALL_INFO* win_infos = (WindowEnumer::WINDOWS_ALL_INFO*)data;
 
