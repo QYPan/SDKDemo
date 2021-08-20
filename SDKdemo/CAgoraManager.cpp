@@ -478,6 +478,8 @@ bool CAgoraManager::StartPushScreen(bool bWithMic, int nPushFps) {
 	param_.excludeWindowList = reinterpret_cast<agora::view_t *>(exclude_window_list_.data());
 	param_.excludeWindowCount = exclude_window_list_.size();
 	param_.frameRate = nPushFps;
+	param_.dimensions.width = 2560;
+	param_.dimensions.height = 1440;
 
 	int ret = -1;
 	int ret1 = -1;
